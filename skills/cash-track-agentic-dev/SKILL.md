@@ -102,23 +102,17 @@ Tell the user which branch(es) you created and in which repo before moving on.
 
 ## Phase 1 — Developer agent (Sonnet)
 
-Dispatch one `Agent` with `subagent_type: "general-purpose"` and `model: "sonnet"`. This
-agent does the real implementation. **Capture its ID/name** — you will keep talking to it.
+Dispatch one `Agent({ subagent_type: "cash-track-developer", description: "implement <slug>", prompt: <brief> })`.
+**Capture its ID/name** — you will keep talking to it.
 
-The developer's contract (encode this in the dispatch prompt — full template in
-`references/agent-prompts.md`):
-- Load the **project skills for the target component** (mapping in
-  `references/component-playbooks.md`) and follow them plus `cash-track-base`. These
-  skills are not optional — they carry the project's conventions.
-- Implement the requirements brief using project best practices.
-- **Write tests** (unit and/or E2E/feature) for the new behaviour where the component
-  supports it. A feature without tests is not finished.
-- **Self-review** before handing off: go back through the requirements brief item by item
-  and confirm each is implemented and implemented *correctly* — not just present.
-- **Run the component's tests and linters** (commands in `component-playbooks.md`) and fix
-  what it broke. Hand off only when its own tests and linters pass.
-- Report back: what changed (file list + summary), which requirements are covered, what
-  tests were added, and the test/lint results.
+The developer's role, boundaries, and output contract are pinned in the agent definition
+(`agents/cash-track-developer.md`). The dispatch prompt only needs the request-specific
+parts:
+- The **requirements brief** from Phase 0.
+- The **repo path** and **branch** you cut.
+- The **project skills for the target component** (mapping in
+  `references/component-playbooks.md`) plus `cash-track-base`.
+- The **test and lint commands** for this component (also in `component-playbooks.md`).
 
 If the developer reports it could not satisfy a requirement (genuine blocker, missing
 decision), surface that to the user rather than letting the pipeline limp forward.
@@ -127,15 +121,12 @@ decision), surface that to the user rather than letting the pipeline limp forwar
 
 ## Phase 2 — Reviewer agent (Haiku), with feedback loop
 
-Dispatch a **fresh** `Agent`, `subagent_type: "general-purpose"`, `model: "haiku"`. Give it
-the requirements brief and the developer's change summary. Its job is to review the diff
-against project conventions, the relevant project skills, and general best practices — and
-to be **specific and material**: real correctness bugs, convention violations, missing
-tests, security issues. It should *not* invent nitpicks to look busy; "nothing material to
-raise" is a valid and common outcome.
-
-The reviewer outputs a structured list of findings (severity + file:line + what + why), or
-an explicit "no material findings".
+Dispatch a **fresh** `Agent({ subagent_type: "cash-track-reviewer", description: "review <slug>", prompt: <brief> })`.
+The reviewer's role and output contract are pinned in the agent definition
+(`agents/cash-track-reviewer.md`) — the prompt only needs the request-specific parts: the
+repo path and branch, the requirements brief and the developer's change summary, and the
+skills to load for this component (`references/component-playbooks.md`) plus
+`cash-track-base`.
 
 **Loop:**
 - **Findings exist** → `SendMessage` to the **developer agent** with the findings. The
@@ -151,10 +142,13 @@ disagreeing, stop and bring the disagreement to the user with both positions —
 
 ## Phase 3 — Tester agent (Haiku)
 
-Dispatch a **fresh** `Agent`, `subagent_type: "general-purpose"`, `model: "haiku"`. The
-tester runs the kind(s) of tests the **target component actually supports** and that prove
-the change works end-to-end — not just the unit tests the developer already ran. See
-`references/component-playbooks.md` for per-component test types and how to run them:
+Dispatch a **fresh** `Agent({ subagent_type: "cash-track-tester", description: "test <slug>", prompt: <brief> })`.
+The tester's role and output contract are pinned in the agent definition
+(`agents/cash-track-tester.md`) — the prompt only needs the request-specific parts: the repo
+path and branch, the requirements brief and change summary, the skills to load, and the test
+types/commands the **target component actually supports** — not just the unit tests the
+developer already ran. See `references/component-playbooks.md` for the full per-component
+mapping; in brief:
 
 - **frontend** → Vitest unit, Playwright E2E, and (for user-visible changes) the
   `agent-browser` skill against the running stack.
@@ -172,8 +166,6 @@ rather than guessing.
 **Loop:** test failures → `SendMessage` to the developer to fix → re-run the relevant tests
 → if the fix is non-trivial, send it back through a quick Phase 2 review → repeat until
 green. Real failures that reveal a requirements gap go back to the user.
-
-The tester reports: what was run, the results, and (for browser tests) what was observed.
 
 ---
 
@@ -214,14 +206,17 @@ harness PR defaults):
 
 - **Relay, don't ghost-write.** When you pass output between agents, pass the substance.
   Don't paraphrase a code review into vagueness.
-- **Models are defaults, not dogma.** Sonnet/Haiku/Haiku is the baseline. If the task is
-  genuinely complex, or the user asks, you may upgrade the reviewer or tester to Sonnet/Opus
-  — note when you do and why. Don't downgrade the developer below Sonnet.
+- **Models are pinned in the agent definitions.** If a task genuinely needs a stronger
+  reviewer or tester, say so and ask the user rather than overriding.
 - **Keep the user oriented at phase boundaries** with one-line status updates ("Developer
   done, 4 files changed, 6 tests added — handing to review"). They can't see subagent
   output; short signposts keep them in the loop without noise.
 - **Run independent dispatches in parallel only when they're truly independent.** The phases
   here are sequential by nature (each depends on the previous), so dispatch one at a time.
-- Read `references/agent-prompts.md` for the exact dispatch prompt templates, and
-  `references/component-playbooks.md` for the per-component skills, test commands, and
-  linters before dispatching.
+- **Pass diffs by reference, not by value.** Tell agents to run `git diff` themselves rather
+  than pasting large diffs into prompts — they share the working tree.
+- **One dispatch at a time.** Phases are sequential; don't parallelise dev/review/test.
+- Read `references/component-playbooks.md` for the per-component skills, test commands, and
+  linters before dispatching. Agent roles and output contracts live in
+  `agents/cash-track-developer.md`, `agents/cash-track-reviewer.md`, and
+  `agents/cash-track-tester.md`.
