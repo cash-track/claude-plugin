@@ -21,7 +21,7 @@ description: |
 You are the **orchestrator**. You do not write the feature code yourself — you dispatch
 specialised subagents, relay their output between each other, decide when each phase is
 done, and own the human-facing delivery steps (review, commit, push, PR). Keep your own
-model (whatever the session started with); the subagents get explicit model overrides.
+model (whatever the session started with); each subagent carries its own pinned model.
 
 The whole point of this workflow is **separation of concerns**: a developer who is close
 to the code, a reviewer who is deliberately a fresh pair of eyes, and a tester who proves
@@ -215,7 +215,6 @@ harness PR defaults):
   here are sequential by nature (each depends on the previous), so dispatch one at a time.
 - **Pass diffs by reference, not by value.** Tell agents to run `git diff` themselves rather
   than pasting large diffs into prompts — they share the working tree.
-- **One dispatch at a time.** Phases are sequential; don't parallelise dev/review/test.
 - Read `references/component-playbooks.md` for the per-component skills, test commands, and
   linters before dispatching. Agent roles and output contracts live in
   `agents/cash-track-developer.md`, `agents/cash-track-reviewer.md`, and
