@@ -11,10 +11,10 @@
 #   4  Dependabot unavailable   -> alerts disabled or no permission; fall back too
 #   1  unexpected error         -> stop and surface it
 #
-# Usage: dependabot-alerts.sh <owner/repo> [out.json]
+# Usage: cash-track-dependabot-alerts <owner/repo> [out.json]
 set -euo pipefail
 
-repo="${1:?usage: dependabot-alerts.sh <owner/repo> [out.json]}"
+repo="${1:?usage: cash-track-dependabot-alerts <owner/repo> [out.json]}"
 out="${2:-/tmp/$(printf '%s' "$repo" | tr '/' '-')-dependabot.json}"
 err="$(mktemp)"
 trap 'rm -f "$err"' EXIT

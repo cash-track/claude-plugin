@@ -63,7 +63,7 @@ disagree, the component's `CLAUDE.md` wins — it's closer to the code.
 |---|---|
 | Path | `./infra` (separate repo) |
 | Commit scope | `feat(infra):`, `fix(infra):` |
-| Skills to load | `cash-track-infra-debug`, plus `terraform-engineer` / `devops-engineer` / `kubernetes-specialist` as relevant |
+| Skills to load | `cash-track-infra`, plus `terraform-engineer` / `devops-engineer` / `kubernetes-specialist` as relevant |
 | Tests / checks (offline only) | Ansible: `ansible-playbook site.yml --syntax-check` (with the `TF_OUTPUT='{...}'` stub from project `CLAUDE.md`) and `ansible-lint <explicit file list>`; Terraform: `terraform validate`, `terraform fmt -check` |
 | Tester test types | **Offline syntax/lint only.** Never run production actions. Stages marked `[OPERATOR-ONLY]` (secrets/prod) are out of scope for this workflow |
 | Notes | Many lint gotchas live in the project `CLAUDE.md` (role-prefix var naming, Title-cased handlers, `docker_compose_v2` `state: restarted`, `no_log: true` for secret tasks). Honour them or `ansible-lint` fails |

@@ -164,7 +164,7 @@ After every non-trivial incident, update the "Common Failure Patterns" section o
 - The root cause found
 - The exact commands that diagnosed it
 
-This converts institutional knowledge into a repeatable playbook. Use the `cash-track-infra-debug` skill itself or edit this file directly. For broader design decisions or architectural changes discovered during the incident, update `./infra/docs/design.md` as well.
+This converts institutional knowledge into a repeatable playbook. Use the `cash-track-infra` skill itself or edit this file directly. For broader design decisions or architectural changes discovered during the incident, update `./infra/docs/design.md` as well.
 
 ---
 
