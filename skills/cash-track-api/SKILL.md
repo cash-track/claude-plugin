@@ -81,6 +81,7 @@ HTTP Request → Controller → Request (validation) → Service / Repository �
 public function update(string $id, UpdateRequest $request): ResponseInterface
 ```
 
+- Routes declared via `#[Route]` attributes directly on controller methods — there is no central route file.
 - URL params injected by name as method arguments.
 - Request (Filter) classes injected as typed arguments — Spiral validates automatically.
 - Return `ResponseInterface` always.
@@ -405,6 +406,8 @@ Conventions:
 - Reuse `$components/schemas` for shared shapes; avoid inline duplication.
 - Timestamps in responses are RFC 3339 / W3C (`DATE_W3C`).
 - Validation error response schema: `{"errors": {"field": "msg"}}` or `{"errors": {"field": ["msg"]}}`.
+- Covers all 76 routes; debug-only `/mails/test` and `/mails/preview` are intentionally excluded.
+- `servers:` lists `https://api.cash-track.app` (production) and `https://api.dev-cash-track.app` (local dev).
 
 ---
 

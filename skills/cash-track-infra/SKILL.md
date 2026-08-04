@@ -631,3 +631,21 @@ After any recovery:
 - Prometheus alert rules: `./infra/compose/config/prometheus/rules/`
 - Ansible playbooks: `./infra/ansible/`
 - Terraform modules: `./infra/terraform/`
+
+---
+
+## Local Ansible and lint conventions
+
+- Run `ansible-playbook` and `ansible-lint` from `infra/ansible/` — `ansible.cfg` uses a relative inventory path
+- Offline syntax / lint: `TF_OUTPUT='{"reserved_ip":{"value":"192.0.2.1"},"droplet_id":{"value":"123456"},"tailscale_hostname":{"value":"cashtrack-prod"},"volume_id":{"value":"vol-abc123"}}' ansible-playbook site.yml --syntax-check`
+- `ansible-lint` from Homebrew has its own Python and ignores `brew install ansible` collections — export `ANSIBLE_COLLECTIONS_PATH=/opt/homebrew/Cellar/ansible/$(brew list --versions ansible | awk '{print $2}')/libexec/lib/python3.14/site-packages/ansible_collections:$HOME/.ansible/collections/ansible_collections` or modules resolve as missing
+- `var-naming[no-role-prefix]` at the `production` profile fails any `register:`/`set_fact:` inside a role that isn't prefixed with the role name (`volume_data_mount`, not `data_mount`)
+- `ansible-lint .` silently reports "0 files processed of 1 encountered" — pass an explicit file list to get real coverage
+- `production` profile: handler/task names must be Title-cased (`Restart api`, not `restart api`); `notify:` strings must match exactly
+- `production` profile: `name[template]` requires jinja at the **end** (`for /32 of {{ ip }}`, not `for {{ ip }}/32`); aligned inline dicts trip `yaml[commas]`/`yaml[colons]` — one space only
+- `community.docker.docker_compose_v2` uses `state: restarted` (not `restarted: true` as the design doc shows)
+- Role `copy:` `src:` searches `<role>/files/` first; for files outside the role tree, anchor with `{{ playbook_dir }}/../...` not bare `../../...`
+- `mysql` container in `compose.core.yml` doesn't publish 3306 to the host — talk to it via `docker exec`, pass root password via `MYSQL_PWD` env (never argv), wrap every secret-touching task in `no_log: true`
+- `secret_files` in `group_vars/all/main.yml` and `roles/compose-render/defaults/main.yml` are **bare names** (no `.env` suffix) — the role appends `.env.tpl` and `.env` at template-load and copy time
+- DO firewall: `community.digitalocean.digital_ocean_firewall` is declarative (replaces the full ruleset → conflicts with terraform-managed firewall). For additive single-rule changes (e.g. `ssh-open`/`ssh-close`), POST/DELETE to `/v2/firewalls/{id}/rules` via `ansible.builtin.uri` instead
+- `shellcheck` isn't installed locally; `bash -n <script>` is the parse-only fallback

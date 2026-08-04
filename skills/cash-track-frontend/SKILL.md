@@ -879,8 +879,10 @@ stack (start order and URLs are in the cash-track-base skill → Local dev stack
   console and `fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'},
   body: JSON.stringify({ email, password, remember:true }) })` to set cookies, then navigate to
   `https://my.dev-cash-track.app`.
-- agent-browser quirks: `select` doesn't work on Nuxt UI custom comboboxes — click the combobox
-  ref to open, snapshot, then click the option ref. `fill` already clears the field before typing.
+- `agent-browser select` does not work with Nuxt UI custom comboboxes — click the combobox ref to
+  open it, then snapshot and click the option ref.
+- `agent-browser fill` clears the field before typing — no need for triple-click (which is not a
+  valid command anyway).
 - **Target stable selectors, not translated text.** Live-app `aria-label`s are i18n strings (the
   hamburger renders `aria-label="Меню"`, not `"menu"`, because the test account defaults to
   **Ukrainian**), whereas the unit-test `t` mock returns the raw key. Match on `aria-controls`,
