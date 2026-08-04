@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "cash-track",
+  "description": "Cash-Track engineering skills, agents, and workflows for Claude Code",
+  "owner": {
+    "name": "Cash-Track",
+    "email": "vovikems@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "cash-track",
+      "source": "./",
+      "description": "Cash-Track engineering standards, architecture, and workflows for the api, frontend, gateway, and infra components",
+      "category": "development"
+    }
+  ]
+}
