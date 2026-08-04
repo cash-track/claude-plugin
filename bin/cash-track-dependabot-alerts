@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+#
+# Fetch OPEN Dependabot alerts for a cash-track repo and emit:
+#   - a severity-sorted markdown table on stdout (drop straight into the PR body)
+#   - normalized JSON to $2 (default: /tmp/cash-track-<repo>-dependabot.json)
+#
+# The exit code drives the skill's evidence cascade, so the caller can branch on it
+# without re-parsing output:
+#   0  open alerts found        -> this is the work list (skip to remediation)
+#   3  no open alerts           -> fall back to the security-scan workflow
+#   4  Dependabot unavailable   -> alerts disabled or no permission; fall back too
+#   1  unexpected error         -> stop and surface it
+#
+# Usage: dependabot-alerts.sh <owner/repo> [out.json]
+set -euo pipefail
+
+repo="${1:?usage: dependabot-alerts.sh <owner/repo> [out.json]}"
+out="${2:-/tmp/$(printf '%s' "$repo" | tr '/' '-')-dependabot.json}"
+err="$(mktemp)"
+trap 'rm -f "$err"' EXIT
+
+# --paginate walks every page; --slurp wraps the pages into one array-of-arrays so a single
+# jq pass is valid (plain --paginate concatenates arrays into invalid JSON). Capture stderr
+# so we can tell 403/disabled from empty.
+if ! raw="$(gh api "repos/${repo}/dependabot/alerts" --paginate --slurp 2>"$err")"; then
+  if grep -qiE '403|must have admin|Dependabot alerts are disabled|not enabled|No installation' "$err"; then
+    echo "DEPENDABOT_UNAVAILABLE: alerts disabled or insufficient permission for ${repo}" >&2
+    exit 4
+  fi
+  cat "$err" >&2
+  exit 1
+fi
+
+# Keep only open alerts; flatten to the fields remediation actually needs.
+# Sort critical -> high -> moderate -> low so the table reads worst-first.
+jq '
+  def rank: {critical:0, high:1, moderate:2, medium:2, low:3}[.] // 9;
+  [ .[][]
+    | select(.state == "open")
+    | {
+        number,
+        severity:        .security_advisory.severity,
+        ghsa:            .security_advisory.ghsa_id,
+        cve:             (.security_advisory.cve_id // "—"),
+        ecosystem:       .dependency.package.ecosystem,
+        package:         .dependency.package.name,
+        manifest:        .dependency.manifest_path,
+        scope:           .dependency.scope,
+        vulnerable_range: .security_vulnerability.vulnerable_version_range,
+        patched:         (.security_vulnerability.first_patched_version.identifier // "no fix"),
+        summary:         .security_advisory.summary,
+        url:             .html_url
+      }
+  ] | sort_by(.severity | rank)
+' <<<"$raw" >"$out"
+
+count="$(jq 'length' "$out")"
+if [ "$count" -eq 0 ]; then
+  echo "NO_OPEN_ALERTS: ${repo} has no open Dependabot alerts" >&2
+  exit 3
+fi
+
+# Human/PR-facing table.
+{
+  echo "| Severity | Package | Ecosystem | Vulnerable range | Patched | CVE / GHSA |"
+  echo "|---|---|---|---|---|---|"
+  jq -r '.[]
+    | "| \(.severity) | `\(.package)` | \(.ecosystem) | \(.vulnerable_range) | \(.patched) | \(.cve) / \(.ghsa) |"' "$out"
+}
+echo >&2
+echo "${count} open alert(s); normalized JSON -> ${out}" >&2
