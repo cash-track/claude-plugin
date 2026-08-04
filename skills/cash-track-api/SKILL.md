@@ -82,6 +82,7 @@ restate them here:
 - **Bootloaders** (`src/Bootloader/`): wire up framework integrations — auth, routes, Redis, mailer, Firebase, Google API, CORS, S3, logging.
 - **Controllers** (`src/Controller/`): Auth, Wallets, Charges, Tags, Profile, Users, Currency, Mails.
 - **Domain models** (`src/Database/`): User, Wallet, Charge, Tag, Limit, Currency, GoogleAccount, Passkey, ForgotPasswordRequest, EmailConfirmation.
+- **Migrations** (`app/migrations/`): Cycle ORM migrations, timestamp-prefixed filenames. Schema changes land here, never as raw SQL elsewhere.
 - **Services** (`src/Service/`): WalletService, ChargeWalletService, UserService, TagService, PhotoStorageService, GoogleAccountService, etc.
 - **Config** (`app/config/`): database, JWT, Firebase, Google, passkey, mail, Redis, cache, monolog.
 - **Tests**: `tests/Feature/` (integration) and `tests/Unit/`; test environment via `tests/docker-compose.yml`.

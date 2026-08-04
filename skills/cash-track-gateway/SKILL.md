@@ -135,20 +135,29 @@ biggest source of subtle bugs. Internalise these rules:
 
 ## Middleware Stack (execution order)
 
-Registered in `router/router.go`. First entry is outermost — it wraps everything after it:
+Assembled in `buildHandler()` in `main.go`, not in `router/router.go` — the router only maps paths
+to handlers. Each `h = X(h)` makes `X` the new outermost layer, so the **last** wrapper applied is
+the first to see a request. Outermost first:
 
-1. OpenTelemetry trace context extraction
-2. Debug request/response logger (`DEBUG_HTTP=true`)
-3. Gzip compression (`COMPRESS=true`)
+1. Gzip compression — only when `COMPRESS=true`, and it wraps everything else
+2. OpenTelemetry trace context extraction
+3. Debug request/response logger (`DEBUG_HTTP=true`)
 4. CORS validation against `CORS_ALLOWED_ORIGINS`
-5. CSRF validation/rotation via Redis (POST/PUT/PATCH/DELETE when logged in)
-6. Default headers + real client IP extraction (Cloudflare → `X-Real-IP` → `X-Forwarded-For`)
-7. Prometheus metrics
+5. Default headers + real client IP extraction (Cloudflare → `X-Real-IP` → `X-Forwarded-For`), trace ID propagation, gateway build provenance
+6. CSRF validation/rotation via Redis — only when `CSRF_ENABLED` (POST/PUT/PATCH/DELETE when logged in)
+7. Prometheus metrics, which wraps the router itself and is passed in as the innermost handler
 
-**Cloudflare header normalisation** happens in step 6: inbound `Cf-*` headers are renamed to
-`Cf-Original-*` before forwarding to the PHP API. This lets the API tell a gateway-verified
-Cloudflare header apart from one a client tried to spoof directly — without the rename, a
-client could set `Cf-Connecting-Ip` itself and the API couldn't distinguish it from the real one.
+**Headers must wrap CSRF, never the reverse.** CSRF short-circuits a validation failure with a 417
+without calling its inner handler. If CSRF were the outer layer, that 417 would go back with no
+trace ID and no provenance headers. `buildHandler`'s own comment says so; preserve the order if you
+touch it.
+
+**Cloudflare header normalisation is not middleware.** `headers.CopyCloudFlareHeaders` is called
+from the forward path (`service/api/forward.go`), not from `headers.Handler`. It renames inbound
+`Cf-*` headers to `Cf-Original-*` on the outbound request so services behind the gateway still see
+the original values. It renames **every** `Cf-`-prefixed header unconditionally and verifies
+nothing: a client-set `Cf-Connecting-Ip` is renamed exactly like a genuine edge one. Do not treat
+`Cf-Original-*` as proof a header came from Cloudflare, and do not build trust decisions on it.
 
 ---
 
