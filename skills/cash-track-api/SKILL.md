@@ -177,6 +177,10 @@ Two modes — choose based on whether you need to query by that field:
 | Store | `EncryptedTypecast::STORE` | AES-256-GCM (random IV) | field is never queried by equality (name, description) |
 | Query | `EncryptedTypecast::QUERY` | AES-256-ECB (deterministic) | field used in WHERE clauses (email, nickname) |
 
+`name`, `email`, and `nickName` are stored encrypted in the DB, but the API contract returns them
+as plain strings — decryption happens transparently through the typecast on read, so controllers,
+views, and API consumers never see ciphertext.
+
 Column size for encrypted fields: `string(1536)` for longer values, `string(767)` for short identifiers like email.
 
 Never store a secret as plaintext. Never query by a STORE-encrypted column. Key comes from env `DB_ENCRYPTER_KEY` → empty in tests (encryption is no-op without a key, which is fine for local/test).

@@ -2,8 +2,9 @@
 
 Per-component map of: which **skills** the developer/reviewer must load, how to run **tests**
 and **linters**, what **test types** the tester runs, and the **commit scope** + repo path.
-Sourced from the project and global `CLAUDE.md`. When a component's `CLAUDE.md` and this file
-disagree, the component's `CLAUDE.md` wins — it's closer to the code.
+Sourced from the component skills (`cash-track-api`, `cash-track-frontend`, `cash-track-gateway`,
+`cash-track-infra`) and `cash-track-base`. When a component skill and this file disagree, the
+component skill wins — it's closer to the code.
 
 > All cash-track components are **separate git repos**. Always `cd` into the right repo before
 > running anything. The gateway lives outside the monorepo tree.
@@ -31,8 +32,8 @@ disagree, the component's `CLAUDE.md` wins — it's closer to the code.
 | Skills to load | `cash-track-frontend`, **all** Vue skills (`vue-best-practices`, `vue-options-api-best-practices`, `vue-router-best-practices`, `vue-pinia-best-practices`, `vue-test-best-practices`/`vue-testing-best-practices`), and `nuxt-ui` |
 | Tests | `npm run test:unit -- --run` (Vitest, non-watch); E2E: `npm run test:e2e` (Playwright) |
 | Linters | `npm run lint` (ESLint + Oxlint) |
-| Tester test types | Vitest unit, Playwright E2E, and the **`agent-browser`** skill for user-visible changes against the running stack (login flow per project `CLAUDE.md`) |
-| Notes | Vue 2 app under `frontend/old/` is read-only legacy. Watch the Vitest/agent-browser gotchas in the project `CLAUDE.md` (UIcon stub names, USelect union types, UDropdownMenu findComponent, Nuxt UI combobox handling) |
+| Tester test types | Vitest unit, Playwright E2E, and the **`agent-browser`** skill for user-visible changes against the running stack (login flow per the `cash-track-base` skill, `## Local dev stack` section) |
+| Notes | Vue 2 app under `frontend/old/` is read-only legacy. Watch the Vitest/agent-browser gotchas in the `cash-track-frontend` skill (UIcon stub names, USelect union types, UDropdownMenu findComponent, Nuxt UI combobox handling) |
 
 ## website — Nuxt 3 SSR / i18n (EN, UK)
 
@@ -64,9 +65,9 @@ disagree, the component's `CLAUDE.md` wins — it's closer to the code.
 | Path | `./infra` (separate repo) |
 | Commit scope | `feat(infra):`, `fix(infra):` |
 | Skills to load | `cash-track-infra`, plus `terraform-engineer` / `devops-engineer` / `kubernetes-specialist` as relevant |
-| Tests / checks (offline only) | Ansible: `ansible-playbook site.yml --syntax-check` (with the `TF_OUTPUT='{...}'` stub from project `CLAUDE.md`) and `ansible-lint <explicit file list>`; Terraform: `terraform validate`, `terraform fmt -check` |
+| Tests / checks (offline only) | Ansible: `ansible-playbook site.yml --syntax-check` (with the `TF_OUTPUT='{...}'` stub from the `cash-track-infra` skill, `## Local Ansible and lint conventions` section) and `ansible-lint <explicit file list>`; Terraform: `terraform validate`, `terraform fmt -check` |
 | Tester test types | **Offline syntax/lint only.** Never run production actions. Stages marked `[OPERATOR-ONLY]` (secrets/prod) are out of scope for this workflow |
-| Notes | Many lint gotchas live in the project `CLAUDE.md` (role-prefix var naming, Title-cased handlers, `docker_compose_v2` `state: restarted`, `no_log: true` for secret tasks). Honour them or `ansible-lint` fails |
+| Notes | Many lint gotchas live in the `cash-track-infra` skill, `## Local Ansible and lint conventions` section (role-prefix var naming, Title-cased handlers, `docker_compose_v2` `state: restarted`, `no_log: true` for secret tasks). Honour them or `ansible-lint` fails |
 
 ## Local service images — mysql / redis / mysql-backup / certs
 

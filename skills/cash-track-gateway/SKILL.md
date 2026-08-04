@@ -153,7 +153,7 @@ cookies? Wire it through the matching handler rather than reimplementing the pol
 
 - Add new settings to `config/config.go`: a field on `Config`, then a line in `Load()` using `getEnv("ENV_NAME", "default")`. Booleans use the `getEnv(...) == "true"` idiom.
 - Add the variable to `.env.example` with a placeholder (never a real value).
-- Document non-obvious vars in the gateway README / monorepo CLAUDE.md table if they change behaviour.
+- Document non-obvious vars in the gateway README if they change behaviour.
 - Secrets in production are injected at deploy time (1Password → env). Never commit a real secret; never read `.env`.
 
 ---

@@ -108,7 +108,7 @@ agent does the real implementation. **Capture its ID/name** — you will keep ta
 The developer's contract (encode this in the dispatch prompt — full template in
 `references/agent-prompts.md`):
 - Load the **project skills for the target component** (mapping in
-  `references/component-playbooks.md`) and follow them plus the repo's `CLAUDE.md`. These
+  `references/component-playbooks.md`) and follow them plus `cash-track-base`. These
   skills are not optional — they carry the project's conventions.
 - Implement the requirements brief using project best practices.
 - **Write tests** (unit and/or E2E/feature) for the new behaviour where the component
@@ -164,10 +164,10 @@ the change works end-to-end — not just the unit tests the developer already ra
 - **infra** → offline syntax/lint paths (`ansible-playbook --syntax-check`, `ansible-lint`,
   `terraform validate`) — never production actions.
 
-Browser / live-stack testing requires the full local stack running (see the project
-`CLAUDE.md` "Testing" section). If the stack is not up and the change needs browser
-verification, ask the user to start it (they can use `! <command>` in the prompt) rather
-than guessing.
+Browser / live-stack testing requires the full local stack running (see the
+`cash-track-base` skill, `## Local dev stack` section). If the stack is not up and the change
+needs browser verification, ask the user to start it (they can use `! <command>` in the prompt)
+rather than guessing.
 
 **Loop:** test failures → `SendMessage` to the developer to fix → re-run the relevant tests
 → if the fix is non-trivial, send it back through a quick Phase 2 review → repeat until
