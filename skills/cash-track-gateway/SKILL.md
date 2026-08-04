@@ -133,15 +133,34 @@ biggest source of subtle bugs. Internalise these rules:
 
 ---
 
+## Middleware Stack (execution order)
+
+Registered in `router/router.go`. First entry is outermost — it wraps everything after it:
+
+1. OpenTelemetry trace context extraction
+2. Debug request/response logger (`DEBUG_HTTP=true`)
+3. Gzip compression (`COMPRESS=true`)
+4. CORS validation against `CORS_ALLOWED_ORIGINS`
+5. CSRF validation/rotation via Redis (POST/PUT/PATCH/DELETE when logged in)
+6. Default headers + real client IP extraction (Cloudflare → `X-Real-IP` → `X-Forwarded-For`)
+7. Prometheus metrics
+
+**Cloudflare header normalisation** happens in step 6: inbound `Cf-*` headers are renamed to
+`Cf-Original-*` before forwarding to the PHP API. This lets the API tell a gateway-verified
+Cloudflare header apart from one a client tried to spoof directly — without the rename, a
+client could set `Cf-Connecting-Ip` itself and the API couldn't distinguish it from the real one.
+
+---
+
 ## Auth, CSRF & Captcha Flow
 
 These are the gateway's reason for existing — get them right.
 
-- **Cookie ↔ Bearer.** Inbound: `cookie.ReadAuthCookie(ctx)` → if `auth.IsLogged()`, `headers.WriteBearerToken(req, auth.AccessToken)`. The PHP API only ever sees a Bearer token. Cookie names: `cshtrka` (access), `cshtrkr` (refresh), `cshtrkcsrf` (CSRF) — all defined as constants in `headers/cookie/`.
+- **Cookie ↔ Bearer.** Inbound: `cookie.ReadAuthCookie(ctx)` → if `auth.IsLogged()`, `headers.WriteBearerToken(req, auth.AccessToken)`. The PHP API only ever sees a Bearer token. Cookie names: `cshtrka` (access), `cshtrkr` (refresh), `cshtrkcsrf` (CSRF) — all defined as constants in `headers/cookie/`. Cookie domain is derived from `GATEWAY_URL`; the `Secure` flag is set when serving over HTTPS.
 - **Auth-setting handlers** (login, register, passkey, google) run: captcha verify → forward → on 2xx set auth cookies + seed CSRF → return `{"redirectUrl": ...}`. `AuthSetHandler` → `CaptchaVerifyHandler` → `FullForwardedHandler` → `Login`.
 - **Logout** forwards the refresh token in the body, then clears cookies.
 - **Token refresh** is automatic on a 401 from the API (`service/api/forward.go`). The critical rule: a **transient** failure (API unreachable / 5xx) must **preserve the session** — do not delete cookies, return `503`. Only a genuine `nil`-error-but-not-logged outcome (refresh token actually expired) clears cookies. Re-read that function before touching refresh logic; the comments there are load-bearing.
-- **CSRF seeding** happens after a successful login or token refresh, keyed to the new access token's `iat`. It is **non-fatal**: a `Seed` error is logged, not surfaced — the user recovers via `GET /csrf`. Only seed on a 2xx response.
+- **CSRF seeding** happens after a successful login or token refresh, keyed to the new access token's `iat`, and stored in Redis as `CT:csrf:{userId}:{iat}`. It is **non-fatal**: a `Seed` error is logged, not surfaced — the user recovers via `GET /csrf`. Only seed on a 2xx response.
 - **Captcha** reads the `X-Ct-Captcha-Challenge` header and verifies against Google reCAPTCHA v3. Empty secret = disabled.
 
 When adding a new gateway route, decide deliberately: does it need captcha? CSRF? auth

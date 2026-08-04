@@ -73,6 +73,21 @@ HTTP Request → Controller → Request (validation) → Service / Repository �
 
 ---
 
+## Codebase Map
+
+Quick orientation inventory — deeper per-layer conventions are in the sections below, don't
+restate them here:
+
+- **Entry point**: `app/src/` — Spiral's bootloader pattern.
+- **Bootloaders** (`src/Bootloader/`): wire up framework integrations — auth, routes, Redis, mailer, Firebase, Google API, CORS, S3, logging.
+- **Controllers** (`src/Controller/`): Auth, Wallets, Charges, Tags, Profile, Users, Currency, Mails.
+- **Domain models** (`src/Database/`): User, Wallet, Charge, Tag, Limit, Currency, GoogleAccount, Passkey, ForgotPasswordRequest, EmailConfirmation.
+- **Services** (`src/Service/`): WalletService, ChargeWalletService, UserService, TagService, PhotoStorageService, GoogleAccountService, etc.
+- **Config** (`app/config/`): database, JWT, Firebase, Google, passkey, mail, Redis, cache, monolog.
+- **Tests**: `tests/Feature/` (integration) and `tests/Unit/`; test environment via `tests/docker-compose.yml`.
+
+---
+
 ## Controller Conventions
 
 ```php
@@ -111,6 +126,22 @@ public function login(LoginRequest $request, TracerInterface $tracer): ResponseI
 ```
 
 Inject `TracerInterface` via method argument (not constructor) when tracing is method-specific.
+
+---
+
+## Authentication Stack
+
+Multiple auth methods coexist server-side:
+
+- **JWT tokens** via `lcobucci/jwt` — the primary session mechanism; validated by the `group: 'auth'` controller group (see Controller Conventions above).
+- **Firebase** — third-party auth provider integration.
+- **Google OAuth 2.0** — `POST /auth/provider/google`, backed by the `GoogleAccount` domain model and `GoogleAccountService`.
+- **WebAuthn / Passkeys** via `web-auth/webauthn-lib` — backed by the `Passkey` domain model.
+- **Email confirmation** — required before creating wallets, charges, or tags; enforced via `$this->verifyIsProfileConfirmed()` (see Exception Handling below).
+- **Forgot-password recovery** — backed by the `ForgotPasswordRequest` domain model.
+
+The gateway (separate repo, `cash-track-gateway` skill) handles the cookie/CSRF/captcha layer in
+front of all of this; the API itself only ever sees a Bearer token or an unauthenticated request.
 
 ---
 

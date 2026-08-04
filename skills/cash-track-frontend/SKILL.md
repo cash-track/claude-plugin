@@ -875,10 +875,8 @@ stack (start order and URLs are in the cash-track-base skill → Local dev stack
 
 - Standard flow: `agent-browser open https://dev-cash-track.app` → Login → fill creds → redirect to
   `https://my.dev-cash-track.app` → run the change-specific checks.
-- **Login workaround** if the website returns 500: open `https://gateway.dev-cash-track.app` in the
-  console and `fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'},
-  body: JSON.stringify({ email, password, remember:true }) })` to set cookies, then navigate to
-  `https://my.dev-cash-track.app`.
+- **Login workaround** if the website returns 500: see the `cash-track-base` skill, `## Local dev
+  stack` section, for the `fetch()`-based cookie-setting flow.
 - `agent-browser select` does not work with Nuxt UI custom comboboxes — click the combobox ref to
   open it, then snapshot and click the option ref.
 - `agent-browser fill` clears the field before typing — no need for triple-click (which is not a

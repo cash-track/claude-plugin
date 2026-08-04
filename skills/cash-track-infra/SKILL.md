@@ -649,3 +649,32 @@ After any recovery:
 - `secret_files` in `group_vars/all/main.yml` and `roles/compose-render/defaults/main.yml` are **bare names** (no `.env` suffix) — the role appends `.env.tpl` and `.env` at template-load and copy time
 - DO firewall: `community.digitalocean.digital_ocean_firewall` is declarative (replaces the full ruleset → conflicts with terraform-managed firewall). For additive single-rule changes (e.g. `ssh-open`/`ssh-close`), POST/DELETE to `/v2/firewalls/{id}/rules` via `ansible.builtin.uri` instead
 - `shellcheck` isn't installed locally; `bash -n <script>` is the parse-only fallback
+
+---
+
+## Kubernetes Services (current state being migrated)
+
+This is the **pre-migration** stack that the Docker Compose migration (see the design doc and
+implementation plan under `/infra/migration/`) is replacing — not the target architecture. The
+rest of this skill assumes the Compose/Traefik topology described in "Architecture at a Glance"
+above; use this list only when comparing old vs. new topology or tracing a service that hasn't
+cut over yet.
+
+Kubernetes services in `/infra/services/`: API, website, frontend, nginx gateway, MySQL
+(StatefulSet), Redis (StatefulSet), MySQL backup, Prometheus, Grafana, Loki, Tempo, AlertManager,
+Promtail, Node Exporter.
+
+---
+
+## Local Service Images
+
+Top-level directories (siblings of `/api`, `/frontend`, `/infra`, outside the `/infra` repo
+itself) holding Dockerfiles for cashtrack-owned images, built and pushed to Docker Hub as
+`cashtrack/<name>`:
+
+- `/mysql` — `cashtrack/mysql` (MySQL with tuned `my.cnf`)
+- `/redis` — `cashtrack/redis`
+- `/mysql-backup` — `cashtrack/mysql-backup` (PHP-based dump + S3 upload)
+- `/certs` — local Traefik + dev TLS (`make start` brings up the dev reverse proxy)
+
+Each has its own `Makefile`; `make build` / `make push` inside the directory.
