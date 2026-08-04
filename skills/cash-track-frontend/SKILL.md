@@ -684,9 +684,9 @@ Four shared composables in `src/composables/`, each `useXxx()` returning refs + 
 - **Validating specs from an RTK terminal (skip this if you are on an ordinary shell):** the wrapper mangles Playwright's stdout reporter, so
   always use the JSON reporter to a temp file and parse it, never read stdout:
   ```bash
+  unset -f npm node npx 2>/dev/null          # nvm installs these as shell functions
   NODE_BIN="$(dirname "$(command -v node)")"
-  unset -f npm node npx 2>/dev/null
-  export PATH="$NODE_BIN:$PATH"
+  [ -x "$NODE_BIN/node" ] && export PATH="$NODE_BIN:$PATH"
   E2E_EMAIL= E2E_PASSWORD= PLAYWRIGHT_JSON_OUTPUT_NAME=/tmp/v.json \
     npx playwright test --project=chromium --workers=1 --reporter=json e2e/FILE.spec.ts \
     >/tmp/out.log 2>/tmp/err.log
