@@ -23,3 +23,6 @@ jobs:
 
       - name: Guard against machine-specific paths
         run: ./scripts/check-paths.sh
+
+      - name: Test the SessionStart hook
+        run: ./hooks/test-session-start.sh
