@@ -1,17 +1,11 @@
 ---
 name: cash-track-security-upgrade
 description: |
-  Find and fix dependency security vulnerabilities in a Cash-Track repository, then
-  raise a remediation PR. Invoke whenever the user wants to patch, triage, or upgrade
-  vulnerable dependencies for one of the cash-track repos (`api`, `frontend`, `website`,
-  `infra`, `gateway`, `mysql`, `redis`, `mysql-backup`, `.github`). Trigger on:
-  "/cash-track-security-upgrade <repo>", "security upgrade for <repo>", "fix the
-  dependabot alerts on gateway", "patch the CVEs in the api", "audit and bump vulnerable
-  packages in website", "run the security scan and fix what it finds", or any request to
-  resolve vulnerability/CVE/GHSA/advisory findings for a cash-track component. Takes ONE
-  argument — the repository name. Cascades across three evidence sources (Dependabot →
-  security-scan GitHub Action → local package-manager audit), opens a branch from the
-  remote default, and assigns the PR to @vokomarov with `dependencies`/`security` labels.
+  Find and fix dependency security vulnerabilities in one Cash-Track repository, then
+  raise a remediation PR. Invoke to patch, triage, or upgrade vulnerable dependencies, or
+  to resolve CVE, GHSA, advisory, or Dependabot findings, for `api`, `frontend`, `website`,
+  `infra`, `gateway`, `mysql`, `redis`, `mysql-backup`, or `.github`. Takes ONE argument,
+  the repository name.
 ---
 
 # Cash-Track Security Upgrade

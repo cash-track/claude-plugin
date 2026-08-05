@@ -2,9 +2,9 @@
 name: cash-track-base
 description: >
   Monorepo-wide facts for Cash-Track: component layout, request flow, per-component
-  commands, local dev stack start order and URLs, API documentation locations, and
-  commit conventions. ALWAYS load this first when working in any cash-track repository,
-  then load the component skill for the directory you are editing.
+  commands, local dev stack start order and URLs, and commit conventions. ALWAYS load
+  this first in any cash-track repository, then load the skill for the component you
+  are editing.
 ---
 
 # Cash-Track Base — Monorepo Facts

@@ -3,17 +3,10 @@ name: cash-track-agentic-dev
 description: |
   Multi-agent workflow for building features and fixing bugs in the Cash-Track monorepo
   (`api`, `frontend`, `website`, `infra`, `gateway`, and the cashtrack-owned images). The
-  current session becomes an ORCHESTRATOR that drives three specialised subagents in
-  sequence — a developer (Sonnet), a code reviewer (Haiku), and a tester (Haiku) — looping
-  until the work is correct, then walks the user through review → commit → push → PR.
-  ALWAYS use this skill when the user asks to implement a feature, build something, add an
-  endpoint/component/page, fix a bug, or address a ticket/issue in any cash-track component,
-  AND wants it carried through to a reviewed, tested, committed change or a pull request.
-  Trigger on phrases like "implement", "build this feature", "add support for", "fix this
-  bug", "work on this ticket", "take this from requirements to PR", "do the full workflow",
-  "develop and open a PR", or any request that spans implementation + review + testing +
-  delivery rather than a single quick edit. Skip it for trivial one-line edits, pure
-  questions, or read-only investigation where no implementation/PR is wanted.
+  session becomes an ORCHESTRATOR driving a developer, reviewer, and tester subagent in a
+  loop, then walks the user through review → commit → push → PR. ALWAYS use it when a
+  request spans implementation plus review plus testing plus delivery. Skip it for trivial
+  one-line edits, pure questions, and read-only investigation.
 ---
 
 # Cash-Track Agentic Development Workflow

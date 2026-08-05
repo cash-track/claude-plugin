@@ -1,16 +1,11 @@
 ---
 name: cash-track-api
 description: |
-  Standards, conventions, and architecture rules for the Cash-Track PHP API (`./api`).
-  ALWAYS use this skill when working with any file inside the `./api` directory, editing
-  controllers, services, repositories, entities, requests, views, migrations, jobs, mail
-  classes, tests, or the OpenAPI spec. Also use it when the user asks about backend
-  patterns, adding endpoints, changing DB schema, queue jobs, or mail templates in this
-  project. Trigger on phrases like "add endpoint", "new controller", "create migration",
-  "write a test", "add a job", "send mail", "fix API", or any reference to Spiral,
-  RoadRunner, Cycle ORM, or the API layer of cash-track.
-  Always load the `php-pro` skill alongside this one for general PHP best practices —
-  this skill is project-specific and builds on top of php-pro's generic PHP context.
+  Standards, conventions, and architecture rules for the Cash-Track PHP API (`./api`):
+  Spiral, RoadRunner, Cycle ORM, controllers, services, repositories, entities, requests,
+  views, migrations, jobs, mail, tests, and the OpenAPI spec. ALWAYS use it for any file
+  under `./api`, and for backend questions about endpoints, DB schema, queue jobs, or mail
+  in this project. Always load the `php-pro` skill alongside it for generic PHP context.
 ---
 
 # Cash-Track API — Development Standards

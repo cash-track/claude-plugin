@@ -1,6 +1,6 @@
 ---
 name: cash-track-infra
-description: Work with and debug Cash-Track infrastructure on DigitalOcean. Use this skill whenever investigating incidents, alerts, service outages (502/500), container restarts, MySQL or backup failures, disk/memory pressure, Tailscale access issues, Traefik routing problems, Ofelia job failures, observability stack issues (Grafana, Prometheus, Loki, Tempo), Terraform state or reprovisioning problems, Ansible playbook failures, or any production cloud infrastructure issue in the Cash-Track stack. Invoke before SSHing into prod or running any `make` infra command. Also covers local Ansible and Terraform lint conventions before running playbooks.
+description: Work with and debug Cash-Track infrastructure on DigitalOcean: incidents, alerts, 502/500 outages, container restarts, MySQL and backup failures, disk or memory pressure, Tailscale, Traefik, Ofelia, the Grafana/Prometheus/Loki/Tempo stack, Terraform, and Ansible. Invoke before SSHing into prod or running any infra `make` command. Also covers local Ansible and Terraform lint conventions.
 ---
 
 # Cash-Track Infrastructure Debugger

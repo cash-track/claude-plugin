@@ -1,12 +1,11 @@
 ---
 name: cash-track-gateway
 description: |
-  Standards, conventions, and architecture for the Cash-Track API Gateway — the Go /
-  FastHTTP service in the separate cash-track/gateway repository that sits in front of the
-  PHP API. ALWAYS use this skill when editing any file in that repo, or when asked about
-  gateway behaviour: request forwarding, auth cookie ↔ Bearer translation, token refresh,
-  CSRF rotation, captcha verify, CORS, or the `/api/*` proxy. Also load the `golang-pro`
-  skill alongside for general Go best practices.
+  Standards, conventions, and architecture for the Cash-Track API Gateway, the Go/FastHTTP
+  service in the separate cash-track/gateway repository that fronts the PHP API. ALWAYS use
+  it for any file in that repo, or for gateway behaviour: request forwarding, auth cookie ↔
+  Bearer translation, token refresh, CSRF rotation, captcha, CORS, the `/api/*` proxy. Also
+  load the `golang-pro` skill alongside it.
 ---
 
 # Cash-Track Gateway — Development Standards

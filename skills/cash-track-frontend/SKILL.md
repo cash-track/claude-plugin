@@ -1,20 +1,14 @@
 ---
 name: cash-track-frontend
 description: |
-  Standards, conventions, and architecture rules for the Cash-Track Vue 3 SPA (`./frontend`).
-  ALWAYS use this skill when working with any file inside the `./frontend` directory — editing
-  `.vue` components, views, Pinia stores, composables, the `src/api/` layer (client, models,
-  function modules), router, i18n messages, unit tests (Vitest), or E2E tests (Playwright).
-  Also use it when the user asks about frontend patterns, adding a page/component, calling an
-  API endpoint, adding a store or composable, wiring forms, charts, tags, wallets, charges,
-  limits, profile, or settings in this project. Trigger on phrases like "add a component",
-  "new view", "call the API", "add a store", "fix the frontend", "wire a form", "add a chart",
-  or any reference to Vue 3, Nuxt UI, Pinia, vue-router, vue-i18n, Vite, or the SPA client of
-  cash-track. The Vue 2 + Bootstrap app under `./frontend/old/` is read-only legacy reference.
-  ALWAYS load these skills alongside this one:
-  `vue-best-practices`, `vue-options-api-best-practices`, `vue-router-best-practices`,
-  `vue-pinia-best-practices`, `vue-testing-best-practices`, and `nuxt-ui`. This skill is
-  project-specific and builds on top of those generic Vue/Nuxt UI skills.
+  Standards, conventions, and architecture rules for the Cash-Track Vue 3 SPA (`./frontend`):
+  Nuxt UI components, views, Pinia stores, composables, the `src/api/` layer, vue-router,
+  vue-i18n, Vitest, and Playwright. ALWAYS use it for any file under `./frontend`, and for
+  frontend questions about pages, components, stores, forms, or charts in this project. The
+  Vue 2 + Bootstrap app under `./frontend/old/` is read-only legacy reference.
+  ALWAYS load these alongside it: `vue-best-practices`,
+  `vue-options-api-best-practices`, `vue-router-best-practices`, `vue-pinia-best-practices`,
+  `vue-testing-best-practices`, `nuxt-ui`.
 ---
 
 # Cash-Track Frontend — Development Standards
