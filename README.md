@@ -16,9 +16,9 @@ claude plugin details cash-track
 ```
 
 You should see 3 agents, 1 hook, and an always-on cost of roughly 1,700 tokens. The inventory line
-reads `Skills (9)` because it counts the 2 commands alongside the 7 skills, and it lists
-`cash-track-security-upgrade` twice for the same reason: the command and the skill share a name on
-purpose, so `/cash-track-security-upgrade <repo>` is the argument-passing front door to the skill.
+reads `Skills (9)` because it counts the 2 commands alongside the 7 skills. All 9 names are distinct;
+a command must never share a name with a skill, or the command shadows the skill and any delegation
+from the command back to "the skill" resolves to itself.
 
 ## Turn on auto-update
 
@@ -57,7 +57,7 @@ triggers an install-consent prompt on every load and does not read plugin config
 | `cash-track-security-upgrade` | Dependency CVE remediation |
 
 Agents: `cash-track-developer`, `cash-track-reviewer`, `cash-track-tester`.
-Commands: `/cash-track-feature`, `/cash-track-security-upgrade`.
+Commands: `/cash-track-feature`, `/cash-track-cve`.
 
 Load `cash-track-base` first in any Cash-Track repo, then the skill for the component you are
 editing. A SessionStart hook injects that pointer automatically when it detects a Cash-Track

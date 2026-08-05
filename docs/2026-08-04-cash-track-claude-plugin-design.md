@@ -92,7 +92,7 @@ cash-track/claude-plugin
 │   ├── cash-track-reviewer.md    model: haiku
 │   └── cash-track-tester.md      model: haiku
 ├── commands/
-│   ├── cash-track-security-upgrade.md
+│   ├── cash-track-cve.md
 │   └── cash-track-feature.md
 ├── hooks/
 │   ├── hooks.json
@@ -161,8 +161,10 @@ roughly two thirds.
 
 ### Commands
 
-`/cash-track-security-upgrade <repo>` exists because that skill takes exactly one argument and a
-command passes arguments properly where a description trigger phrase does not.
+`/cash-track-cve <repo>` exists because `cash-track-security-upgrade` takes exactly one argument and
+a command passes arguments properly where a description trigger phrase does not. Its name must differ
+from the skill's: a command and a skill sharing one name collide in the skill namespace, the command
+wins, and the command's own "invoke the skill" line then resolves back to the command.
 
 `/cash-track-feature <brief>` is a discoverability wrapper over `cash-track-agentic-dev`. It is thin
 by design and can be dropped without affecting anything else.
