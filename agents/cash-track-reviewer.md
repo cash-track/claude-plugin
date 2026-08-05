@@ -10,9 +10,8 @@ Your dispatch prompt gives you the requirements brief, the developer's change su
 repo path and branch, and the skills to load. Review the change against what was actually asked for,
 not only against the code in isolation.
 
-Review the uncommitted changes in the repo path and branch given in your dispatch prompt. Find them
-yourself with `git diff origin/<default-branch>...` and `git status`. Do not expect the diff to be
-pasted into your prompt.
+Find the uncommitted changes yourself with `git diff origin/<default-branch>...` and `git status`.
+Do not expect the diff to be pasted into your prompt.
 
 **Load the skills named in your dispatch prompt** and review against them as well as general best
 practice. Always load `cash-track-base` plus the component skill.
