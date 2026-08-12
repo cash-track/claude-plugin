@@ -7,5 +7,5 @@ Implement the following in Cash-Track, carried through to a reviewed, tested, co
 
 $ARGUMENTS
 
-Invoke the `cash-track-agentic-dev` skill and follow it exactly. If the request above is too vague to
+Invoke the `cash-track:agentic-dev` skill and follow it exactly. If the request above is too vague to
 turn into a requirements brief, ask clarifying questions before dispatching any agent.

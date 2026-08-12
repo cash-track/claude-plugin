@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Injects a pointer to cash-track-base when the session is in a Cash-Track checkout.
+# Injects a pointer to cash-track:base when the session is in a Cash-Track checkout.
 # Emits nothing and exits 0 anywhere else, so leaving it enabled globally is harmless.
 # The context is a static string, so the script never needs to locate the plugin root;
 # hooks.json resolves this script's path via ${CLAUDE_PLUGIN_ROOT}.
@@ -24,18 +24,18 @@ fi
 # bash 5.3+ (obra/superpowers#571). Keep this string free of single quotes.
 context='You are working in a Cash-Track repository.
 
-Load the `cash-track-base` skill before doing anything else. It carries the monorepo layout, the
+Load the `cash-track:base` skill before doing anything else. It carries the monorepo layout, the
 request flow, per-component commands, the local dev stack start order and URLs, and the commit
 conventions.
 
 Then load the skill for the component you are editing:
-  ./api      -> cash-track-api
-  ./frontend -> cash-track-frontend
-  ./infra    -> cash-track-infra
-  gateway    -> cash-track-gateway
+  ./api      -> cash-track:api
+  ./frontend -> cash-track:frontend
+  ./infra    -> cash-track:infra
+  gateway    -> cash-track:gateway
 
-For building a feature or fixing a bug end to end, use cash-track-agentic-dev.
-For dependency CVEs, use cash-track-security-upgrade.'
+For building a feature or fixing a bug end to end, use cash-track:agentic-dev.
+For dependency CVEs, use cash-track:security-upgrade.'
 
 escape_for_json() {
   local s="$1"

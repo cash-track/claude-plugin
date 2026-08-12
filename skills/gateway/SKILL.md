@@ -1,5 +1,5 @@
 ---
-name: cash-track-gateway
+name: gateway
 description: |
   Standards, conventions, and architecture for the Cash-Track API Gateway, the Go/FastHTTP
   service in the separate cash-track/gateway repository that fronts the PHP API. ALWAYS use

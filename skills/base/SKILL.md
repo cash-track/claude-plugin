@@ -1,5 +1,5 @@
 ---
-name: cash-track-base
+name: base
 description: >
   Monorepo-wide facts for Cash-Track: component layout, request flow, per-component
   commands, local dev stack start order and URLs, and commit conventions. ALWAYS load
@@ -10,8 +10,8 @@ description: >
 # Cash-Track Base — Monorepo Facts
 
 Shared facts about the Cash-Track monorepo that every component skill assumes. Load this
-first, then the skill for the specific directory you're editing (`cash-track-api`,
-`cash-track-frontend`, `cash-track-gateway`, `cash-track-infra`, or the others).
+first, then the skill for the specific directory you're editing (`cash-track:api`,
+`cash-track:frontend`, `cash-track:gateway`, `cash-track:infra`, or the others).
 
 ---
 
@@ -174,8 +174,8 @@ to set the HttpOnly auth cookies, then navigate to `https://my.dev-cash-track.ap
 
 ## API Documentation
 
-- Backend API spec: `/api/docs/openapi.yaml` (76 routes) — conventions, lint command, and OAS rules live in the `cash-track-api` skill.
-- Gateway spec: `${CASHTRACK_GATEWAY_PATH:-$(go env GOPATH)/src/github.com/cash-track/gateway}/docs/openapi.yaml` — conventions and lint command live in the `cash-track-gateway` skill.
+- Backend API spec: `/api/docs/openapi.yaml` (76 routes) — conventions, lint command, and OAS rules live in the `cash-track:api` skill.
+- Gateway spec: `${CASHTRACK_GATEWAY_PATH:-$(go env GOPATH)/src/github.com/cash-track/gateway}/docs/openapi.yaml` — conventions and lint command live in the `cash-track:gateway` skill.
 
 ---
 

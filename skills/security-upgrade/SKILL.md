@@ -1,5 +1,5 @@
 ---
-name: cash-track-security-upgrade
+name: security-upgrade
 description: |
   Find and fix dependency security vulnerabilities in one Cash-Track repository, then
   raise a remediation PR. Invoke to patch, triage, or upgrade vulnerable dependencies, or
@@ -205,7 +205,7 @@ Source of findings: **<Dependabot | `security.yml` run #<id> | `<audit tool>`>**
 | **PHP / Composer** (`api`, `mysql-backup`) | `composer audit --locked --format=json` | direct: raise constraint in `composer.json` then `composer update <pkg> -W`; transitive: `composer update <pkg> -W`. CI uses Symfony security-checker. | `api`: `composer checks` (or at least `composer phpunit`) — needs the test stack per the api README/`tests/docker-compose.yml`. `mysql-backup`: re-run `composer audit`, `make build`, and any `composer` test script if defined |
 | **npm** (`frontend`, `website`) | `npm audit --json` | direct: `npm install <pkg>@<ver>`; transitive: add `overrides` in `package.json` then `npm install`. Avoid `npm audit fix --force`. | frontend: `npm run test:unit -- --run` + `npm run lint`; website: `npm run lint:js` + `npm run build` |
 | **Go modules** (`gateway`) | `command -v govulncheck \|\| go install golang.org/x/vuln/cmd/govulncheck@latest`; then `govulncheck ./...` (reachability-aware) | `go get <module>@<patched>` then `go mod tidy` | `make test` |
-| **Actions/Docker/Terraform** (`infra`, `.github`, `mysql`, `redis`) | none — rely on Dependabot (Phase 2) for action SHAs, base images, providers | bump pinned action SHAs / `FROM` base tags / TF provider versions / Ansible collections as the alert dictates | infra: `ansible-lint` + `ansible-playbook site.yml --syntax-check` (see the `cash-track-infra` skill, `## Local Ansible and lint conventions` section, for the env it needs); Docker repos: `make build` |
+| **Actions/Docker/Terraform** (`infra`, `.github`, `mysql`, `redis`) | none — rely on Dependabot (Phase 2) for action SHAs, base images, providers | bump pinned action SHAs / `FROM` base tags / TF provider versions / Ansible collections as the alert dictates | infra: `ansible-lint` + `ansible-playbook site.yml --syntax-check` (see the `cash-track:infra` skill, `## Local Ansible and lint conventions` section, for the env it needs); Docker repos: `make build` |
 
 ## Final checklist
 

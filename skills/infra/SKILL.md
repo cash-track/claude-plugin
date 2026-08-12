@@ -1,5 +1,5 @@
 ---
-name: cash-track-infra
+name: infra
 description: Work with and debug Cash-Track infrastructure on DigitalOcean such as incidents, alerts, 502/500 outages, container restarts, MySQL and backup failures, disk or memory pressure, Tailscale, Traefik, Ofelia, the Grafana/Prometheus/Loki/Tempo stack, Terraform, and Ansible. Invoke before SSHing into prod or running any infra `make` command. Also covers local Ansible and Terraform lint conventions.
 ---
 
@@ -164,7 +164,7 @@ After every non-trivial incident, update the "Common Failure Patterns" section o
 - The root cause found
 - The exact commands that diagnosed it
 
-This converts institutional knowledge into a repeatable playbook. Use the `cash-track-infra` skill itself or edit this file directly. For broader design decisions or architectural changes discovered during the incident, update `./infra/docs/design.md` as well.
+This converts institutional knowledge into a repeatable playbook. Use the `cash-track:infra` skill itself or edit this file directly. For broader design decisions or architectural changes discovered during the incident, update `./infra/docs/design.md` as well.
 
 ---
 

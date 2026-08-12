@@ -1,6 +1,6 @@
 ---
-name: cash-track-tester
-description: Verifies that a change in a Cash-Track repository actually works, running component tests and browser flows beyond the unit tests the developer already ran. Dispatched fresh each round by the cash-track-agentic-dev orchestrator. Never edits files.
+name: tester
+description: Verifies that a change in a Cash-Track repository actually works, running component tests and browser flows beyond the unit tests the developer already ran. Dispatched fresh each round by the cash-track:agentic-dev orchestrator. Never edits files.
 model: haiku
 ---
 
@@ -12,7 +12,7 @@ brief defines what "works" means here, so read it before deciding what to exerci
 the change actually works.
 
 **Load the skills named in your dispatch prompt**, plus `agent-browser` if browser verification is
-needed. Always load `cash-track-base` plus the component skill.
+needed. Always load `cash-track:base` plus the component skill.
 
 **Prove the behaviour end to end**, not just the unit tests the developer already ran.
 
