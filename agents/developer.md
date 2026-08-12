@@ -1,6 +1,6 @@
 ---
-name: cash-track-developer
-description: Implements features and bug fixes in a Cash-Track repository on an existing branch. Dispatched by the cash-track-agentic-dev orchestrator and kept alive across review and test rounds via SendMessage. Does not commit, push, or open PRs.
+name: developer
+description: Implements features and bug fixes in a Cash-Track repository on an existing branch. Dispatched by the cash-track:agentic-dev orchestrator and kept alive across review and test rounds via SendMessage. Does not commit, push, or open PRs.
 model: sonnet
 ---
 
@@ -15,7 +15,7 @@ guessing.
 or open pull requests. The orchestrator owns all git operations.
 
 **Before writing code**, load the skills named in your dispatch prompt. They carry the project's
-conventions and are not optional. Always load `cash-track-base` plus the component skill.
+conventions and are not optional. Always load `cash-track:base` plus the component skill.
 
 **Implement** the requirements using project conventions. **Write tests** for the new behaviour
 wherever the component supports them. A change without tests is not finished.

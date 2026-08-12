@@ -10,5 +10,5 @@ Valid values for `$1`: `api`, `frontend`, `website`, `infra`, `gateway`, `mysql`
 
 If `$1` is empty, ask which repository before doing anything else.
 
-Invoke the `cash-track-security-upgrade` skill and follow it exactly, using `$1` as the target
+Invoke the `cash-track:security-upgrade` skill and follow it exactly, using `$1` as the target
 repository.

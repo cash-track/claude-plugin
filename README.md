@@ -48,18 +48,18 @@ triggers an install-consent prompt on every load and does not read plugin config
 
 | Skill | Covers |
 |---|---|
-| `cash-track-base` | Monorepo layout, request flow, commands, local dev stack, commit conventions |
-| `cash-track-api` | Spiral, RoadRunner, Cycle ORM backend |
-| `cash-track-frontend` | Vue 3 SPA, Nuxt UI, Vitest, Playwright, agent-browser |
-| `cash-track-gateway` | Go / FastHTTP gateway |
-| `cash-track-infra` | Production debugging, Ansible and Terraform local checks |
-| `cash-track-agentic-dev` | Orchestrated build workflow |
-| `cash-track-security-upgrade` | Dependency CVE remediation |
+| `cash-track:base` | Monorepo layout, request flow, commands, local dev stack, commit conventions |
+| `cash-track:api` | Spiral, RoadRunner, Cycle ORM backend |
+| `cash-track:frontend` | Vue 3 SPA, Nuxt UI, Vitest, Playwright, agent-browser |
+| `cash-track:gateway` | Go / FastHTTP gateway |
+| `cash-track:infra` | Production debugging, Ansible and Terraform local checks |
+| `cash-track:agentic-dev` | Orchestrated build workflow |
+| `cash-track:security-upgrade` | Dependency CVE remediation |
 
-Agents: `cash-track-developer`, `cash-track-reviewer`, `cash-track-tester`.
-Commands: `/cash-track-feature`, `/cash-track-cve`.
+Agents: `cash-track:developer`, `cash-track:reviewer`, `cash-track:tester`.
+Commands: `/cash-track:feature`, `/cash-track:cve`.
 
-Load `cash-track-base` first in any Cash-Track repo, then the skill for the component you are
+Load `cash-track:base` first in any Cash-Track repo, then the skill for the component you are
 editing. A SessionStart hook injects that pointer automatically when it detects a Cash-Track
 checkout, and stays silent everywhere else.
 

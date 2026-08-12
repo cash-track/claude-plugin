@@ -1,5 +1,5 @@
 ---
-name: cash-track-agentic-dev
+name: agentic-dev
 description: |
   Multi-agent workflow for building features and fixing bugs in the Cash-Track monorepo
   (`api`, `frontend`, `website`, `infra`, `gateway`, and the cashtrack-owned images). The
@@ -95,16 +95,16 @@ Tell the user which branch(es) you created and in which repo before moving on.
 
 ## Phase 1 — Developer agent (Sonnet)
 
-Dispatch one `Agent({ subagent_type: "cash-track-developer", description: "implement <slug>", prompt: <brief> })`.
+Dispatch one `Agent({ subagent_type: "cash-track:developer", description: "implement <slug>", prompt: <brief> })`.
 **Capture its ID/name** — you will keep talking to it.
 
 The developer's role, boundaries, and output contract are pinned in the agent definition
-(`agents/cash-track-developer.md`). The dispatch prompt only needs the request-specific
+(`agents/developer.md`). The dispatch prompt only needs the request-specific
 parts:
 - The **requirements brief** from Phase 0.
 - The **repo path** and **branch** you cut.
 - The **project skills for the target component** (mapping in
-  `references/component-playbooks.md`) plus `cash-track-base`.
+  `references/component-playbooks.md`) plus `cash-track:base`.
 - The **test and lint commands** for this component (also in `component-playbooks.md`).
 
 If the developer reports it could not satisfy a requirement (genuine blocker, missing
@@ -114,12 +114,12 @@ decision), surface that to the user rather than letting the pipeline limp forwar
 
 ## Phase 2 — Reviewer agent (Haiku), with feedback loop
 
-Dispatch a **fresh** `Agent({ subagent_type: "cash-track-reviewer", description: "review <slug>", prompt: <brief> })`.
+Dispatch a **fresh** `Agent({ subagent_type: "cash-track:reviewer", description: "review <slug>", prompt: <brief> })`.
 The reviewer's role and output contract are pinned in the agent definition
-(`agents/cash-track-reviewer.md`) — the prompt only needs the request-specific parts: the
+(`agents/reviewer.md`) — the prompt only needs the request-specific parts: the
 repo path and branch, the requirements brief and the developer's change summary, and the
 skills to load for this component (`references/component-playbooks.md`) plus
-`cash-track-base`.
+`cash-track:base`.
 
 **Loop:**
 - **Findings exist** → `SendMessage` to the **developer agent** with the findings. The
@@ -135,9 +135,9 @@ disagreeing, stop and bring the disagreement to the user with both positions —
 
 ## Phase 3 — Tester agent (Haiku)
 
-Dispatch a **fresh** `Agent({ subagent_type: "cash-track-tester", description: "test <slug>", prompt: <brief> })`.
+Dispatch a **fresh** `Agent({ subagent_type: "cash-track:tester", description: "test <slug>", prompt: <brief> })`.
 The tester's role and output contract are pinned in the agent definition
-(`agents/cash-track-tester.md`) — the prompt only needs the request-specific parts: the repo
+(`agents/tester.md`) — the prompt only needs the request-specific parts: the repo
 path and branch, the requirements brief and change summary, the skills to load, and the test
 types/commands the **target component actually supports** — not just the unit tests the
 developer already ran. See `references/component-playbooks.md` for the full per-component
@@ -152,7 +152,7 @@ mapping; in brief:
   `terraform validate`) — never production actions.
 
 Browser / live-stack testing requires the full local stack running (see the
-`cash-track-base` skill, `## Local dev stack` section). If the stack is not up and the change
+`cash-track:base` skill, `## Local dev stack` section). If the stack is not up and the change
 needs browser verification, ask the user to start it (they can use `! <command>` in the prompt)
 rather than guessing.
 
@@ -210,5 +210,5 @@ harness PR defaults):
   than pasting large diffs into prompts — they share the working tree.
 - Read `references/component-playbooks.md` for the per-component skills, test commands, and
   linters before dispatching. Agent roles and output contracts live in
-  `agents/cash-track-developer.md`, `agents/cash-track-reviewer.md`, and
-  `agents/cash-track-tester.md`.
+  `agents/developer.md`, `agents/reviewer.md`, and
+  `agents/tester.md`.

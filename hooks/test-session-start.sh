@@ -12,7 +12,7 @@ check() {
   local out
   out=$(printf '{"cwd":"%s"}' "$dir" | "$HOOK" 2>/dev/null)
   if [ "$want" = "inject" ]; then
-    if printf '%s' "$out" | grep -q "cash-track-base"; then
+    if printf '%s' "$out" | grep -q "cash-track:base"; then
       echo "PASS: $name"
     else
       echo "FAIL: $name - expected injection, got: ${out:-<empty>}"; fails=$((fails+1))

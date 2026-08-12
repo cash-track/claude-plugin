@@ -1,5 +1,5 @@
 ---
-name: cash-track-frontend
+name: frontend
 description: |
   Standards, conventions, and architecture rules for the Cash-Track Vue 3 SPA (`./frontend`):
   Nuxt UI components, views, Pinia stores, composables, the `src/api/` layer, vue-router,
@@ -865,11 +865,11 @@ Four shared composables in `src/composables/`, each `useXxx()` returning refs + 
 ## Browser Verification (agent-browser)
 
 After a UI change, verify behaviour with the **`agent-browser`** skill against the running dev
-stack (start order and URLs are in the cash-track-base skill → Local dev stack).
+stack (start order and URLs are in the cash-track:base skill → Local dev stack).
 
 - Standard flow: `agent-browser open https://dev-cash-track.app` → Login → fill creds → redirect to
   `https://my.dev-cash-track.app` → run the change-specific checks.
-- **Login workaround** if the website returns 500: see the `cash-track-base` skill, `## Local dev
+- **Login workaround** if the website returns 500: see the `cash-track:base` skill, `## Local dev
   stack` section, for the `fetch()`-based cookie-setting flow.
 - `agent-browser select` does not work with Nuxt UI custom comboboxes — click the combobox ref to
   open it, then snapshot and click the option ref.

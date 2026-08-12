@@ -1,5 +1,5 @@
 ---
-name: cash-track-api
+name: api
 description: |
   Standards, conventions, and architecture rules for the Cash-Track PHP API (`./api`):
   Spiral, RoadRunner, Cycle ORM, controllers, services, repositories, entities, requests,
@@ -136,7 +136,7 @@ Multiple auth methods coexist server-side:
 - **Email confirmation** — required before creating wallets, charges, or tags; enforced via `$this->verifyIsProfileConfirmed()` (see Exception Handling below).
 - **Forgot-password recovery** — backed by the `ForgotPasswordRequest` domain model.
 
-The gateway (separate repo, `cash-track-gateway` skill) handles the cookie/CSRF/captcha layer in
+The gateway (separate repo, `cash-track:gateway` skill) handles the cookie/CSRF/captcha layer in
 front of all of this; the API itself only ever sees a Bearer token or an unauthenticated request.
 
 ---
