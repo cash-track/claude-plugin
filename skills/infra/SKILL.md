@@ -576,6 +576,40 @@ binds within seconds of the dir becoming writable):
 If it ever recurs after a deploy, confirm the rendered mode survived:
 `docker compose ... config | grep -A4 tmpfs` should show `mode: 511` (octal 0777).
 
+### `./ssh-prod deploy-service <service> <tag>` fails ("command not found" or `Permission denied`)
+
+Symptom: the documented operator command from this README fails for
+**every** service, old and new — either `bash: deploy-service: command not
+found`, or (if invoked by full path) `mv: inter-device move failed: ...
+unable to remove target: Permission denied`.
+
+```bash
+./infra/ssh-prod 'echo $PATH'                              # /opt/cashtrack/bin is absent
+./infra/ssh-prod '/opt/cashtrack/bin/deploy-service <svc> <tag>'  # reproduces the mv/Permission denied
+./infra/ssh-prod 'ls -ld /mnt/data'                         # drwxr-xr-x root:root  <- the mismatch
+```
+
+**Root cause:** `deploy-service` is installed to `/opt/cashtrack/bin`
+(`ansible/roles/compose-up/tasks/main.yml`), which is not on `ops`'s `$PATH`
+(only `/usr/local/bin` is, via the `docker-*` wrappers from the `base`
+role) — so the bare command from the README/runbook 404s. Even invoked by
+full path, the script must run as **root**: it atomically rewrites
+`/mnt/data/cashtrack.env` via `mv` from a `/tmp` tempfile, and cross-device
+`mv` unlinks the destination first — which requires *write on the parent
+directory* (`/mnt/data`, `root:root 0755`), not ownership of the file
+itself. `ops` owns `cashtrack.env` but not `/mnt/data`, so the unlink is
+denied. The `deploy` CI user works fine because `deploy.yml` (in
+`cash-track/.github`) already invokes it via `sudo -n` against the sudoers
+grant in `terraform/modules/droplet/templates/cloud-init.yaml`; the
+human-operator path documented in this README never had that `sudo`.
+
+**Fix applied:** a thin PATH wrapper at `/usr/local/bin/deploy-service`
+(`ansible/roles/compose-up/files/deploy-service-wrapper`, installed by the
+`compose-up` role) that `exec sudo -n /opt/cashtrack/bin/deploy-service
+"$@"`. `ops` already has passwordless `ALL=(ALL) NOPASSWD:ALL` sudo, so
+this makes the documented command work unmodified. Apply with `make -C
+infra deploy` (role is `compose-up`, tagged `compose`).
+
 ---
 
 ## Deploying and Rolling Back
