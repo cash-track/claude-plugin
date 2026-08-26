@@ -412,6 +412,15 @@ export async function createWallet(request: CreateWalletRequest): Promise<Wallet
 - `apiCall` handles **401 → redirect to login**, and **417 (CSRF) → refresh `GET /csrf` and retry
   once** (only for mutating methods; GET/OPTIONS aren't retried). On second failure it
   redirects/reloads. Don't reimplement this per call.
+- **`apiCall` also mints one `Idempotency-Key` (UUIDv4) per call and attaches it to every mutating
+  request** made through that axios instance — the transport retries (`withTransportRetry`,
+  `RETRY_MAX_ATTEMPTS` = 3 with jittered backoff) and the 417/CSRF replay all share it, which is the
+  whole point: a key minted per HTTP attempt would let the API see distinct keys and duplicate the
+  write anyway. Safe methods (`get`/`head`/`options`) get no key. Never mint one in a per-domain API
+  function or a request hook that re-runs per attempt.
+- **The API's idempotency responses surface through `useApiErrors`:** 409 = the same action is still
+  in flight, 422 = the key was reused with a different body. Both are user-visible messages, not
+  bugs to retry around.
 - Functions are **plain async functions** returning typed model instances (or `void`). No
   `Repository` class, no decorators (those were dropped from the old app).
 - Request bodies are typed via exported `interface XxxRequest`. Map results with `Model.from`.
@@ -813,6 +822,9 @@ Four shared composables in `src/composables/`, each `useXxx()` returning refs + 
   `'{count} обрано'`) you can't use `label()` and must hardcode the word in a regex — copy the
   *actual* uk.ts string, don't guess (it's 'обрано' here, not 'вибрано'). Sanity-check selectors in
   *both* locales; the EN side can be collision-free and correct while the UK side isn't.
+  Same trap in the theme menu: `theme.dark` = 'Темна' is a substring of `theme.system` = 'Системна',
+  so `label('theme.dark')` matches both menu items and trips strict mode in UK only —
+  `selectors.themeMenuItem` uses `labelExact` for that reason.
 - **`UCollapsible` with `:unmount-on-hide="false"`** mounts its content (and fires its data fetches)
   on page load even while closed — register `page.waitForResponse(...)` **before** `page.goto`.
   Charts inside a collapsible need the panel opened before asserting the canvas.
