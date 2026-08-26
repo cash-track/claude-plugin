@@ -176,6 +176,35 @@ cookies? Wire it through the matching handler rather than reimplementing the pol
 
 ---
 
+## Retry Policy & Idempotency
+
+A retry that replays a mutating request the API already committed double-applies the write.
+The rule is **only GET/HEAD may be replayed blind**, enforced at two layers that must stay in
+agreement:
+
+- **`http/client.go` — `MaxIdemponentCallAttempts: 1`. Do not raise it.** fasthttp retries *any*
+  method on `io.EOF` regardless of `RetryIf`, so 1 is the only value that closes that hole; the
+  `RetryIf` func is unreachable at that setting and is kept as a statement of intent. Pinned by
+  `TestDoNotRetriedAtThisLayerRegardlessOfMethod`.
+- **PUT is deliberately excluded** from the retryable set despite being RFC-idempotent: the
+  gateway's PUT routes are read-modify-write, and a write error can't distinguish "never arrived"
+  from "committed, then the connection died".
+- **`http/retryhttp/` is where GET/HEAD retries live** (they're given up at the layer below). It
+  retries only on a `broken pipe` error and only for GET/HEAD (`isRetryableMethod`) — keep that
+  gate matching `RetryIf` if either changes.
+- Traefik in front of the gateway also retries (`retry@file`, attempts:3), so a mutating request
+  can arrive twice even with the gateway retry-free. That's what the `Idempotency-Key` is for.
+
+**The gateway relays idempotency headers, it never mints or interprets them.** The client mints one
+UUIDv4 per logical action; `service/api/forward.go` copies `Idempotency-Key` inbound — including
+onto the 401-refresh retry, which reuses the same `req` — and copies `Idempotency-Replayed` back
+out. Both are in `singleInstanceHeaders`, so a second write overwrites instead of appending. The
+PHP API does the actual dedupe (Redis claim + response replay); the gateway's only job is not to
+drop the header. Note `Idempotency-Replayed` is **not** in `CorsExposedHeaders`, so browser JS
+can't read it cross-origin — it's a diagnostic for logs and proxies, not a client-facing signal.
+
+---
+
 ## Configuration
 
 - Add new settings to `config/config.go`: a field on `Config`, then a line in `Load()` using `getEnv("ENV_NAME", "default")`. Booleans use the `getEnv(...) == "true"` idiom.
@@ -232,6 +261,11 @@ Mocks are generated, never hand-written. After adding/changing an interface:
 `depguard`, `cyclop`, `funlen`, `wsl` disabled; `mocks/` and `*_test.go` excluded. Don't
 re-enable a disabled linter or add per-line `//nolint` without a comment justifying it.
 
+**If `golangci-lint` exits 3 with no output, redirect stdout to a file and re-run** —
+`golangci-lint run > "${TMPDIR:-/tmp}/lint.log" 2>&1; cat "${TMPDIR:-/tmp}/lint.log"` then reports
+normally (exit 0, "0 issues"). Seen with v2.1.5 under sandboxed shells where stdout is a pipe. An
+empty exit-3 is that artefact, not a finding — don't chase it, and don't report the run as failed.
+
 ---
 
 ## Routes the Gateway Owns
@@ -242,7 +276,7 @@ re-enable a disabled linter or add per-line `//nolint` without a comment justify
 | ANY | `/ready` | `ReadyHandler` (checks PHP API healthcheck) |
 | GET | `/csrf` | `csrf.RotateTokenHandler` (requires auth) |
 | POST | `/api/auth/login`, `/login/passkey`, `/register`, `/provider/google` | `AuthSetHandler` (captcha → forward → cookies) |
-| POST | `/api/auth/login/passkey/init` | `CaptchaVerifyHandler` |
+| GET | `/api/auth/login/passkey/init` | `CaptchaVerifyHandler` (GET, matching the backend route and the client) |
 | POST | `/api/auth/logout` | `AuthResetHandler` |
 | ANY | `/api/{path:*}` | `FullForwardedHandler` (catch-all proxy) |
 

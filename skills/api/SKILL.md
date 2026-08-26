@@ -351,6 +351,16 @@ This matters most around `Spiral\Http\Middleware\ErrorHandlerMiddleware`, which 
 
 **Header-only middleware that needs a value stable for the process lifetime (e.g. build metadata from env) should resolve it once in the constructor**, not on every `process()` call — mirrors `UserLocaleSelectorMiddleware`, which precomputes `$availableLocales` in its constructor and reuses it per request.
 
+### `IdempotencyKeyMiddleware`
+
+Deduplicates mutating requests carrying an `Idempotency-Key` (canonical lowercase UUIDv4) so a Traefik/gateway retry can't re-run the controller and double-apply a charge. It claims `idempotency:{userId|ip}:{method}:{path}:{key}` in Redis with `SET NX` under a 60s lease, caches the response for 24h, and replays it with `Idempotency-Replayed: true`. Duplicate still in flight → 409 + `Retry-After`; same key with a different body fingerprint → 422; malformed key → 400. Missing header = no dedupe, which is a valid request.
+
+- **It matches routes by `Router::ROUTE_NAME`, never by path.** Route groups add the `/v1` prefix, so the path seen here is `/v1/auth/login` — an un-prefixed path string would silently never match. That is how `CREDENTIAL_ISSUING_ROUTES` (login / register / refresh / passkey / google) are excluded; caching one would park live access and refresh tokens in Redis for 24h, and replaying `/auth/refresh` defeats rotation.
+- **Ordering, in both `middlewareGroups()`:** after `AuthMiddleware` (it scopes the key by user id, falling back to the client IP) and before `RateLimitMiddleware` (a replay skips the limiter, so `x-ratelimit-*` are dropped from the cached response along with the rest of `VOLATILE_HEADERS`). The `web` group gets it too — unauthenticated `password/forgot` and `email/confirmation/resend` amplify emails on retry.
+- **Every Redis problem fails open** — store unavailable, corrupt payload, or a lost `SET NX`/`GET` race after `CLAIM_ATTEMPTS`. A duplicate write beats a hard outage; each path logs a warning.
+- **5xx and >256KB responses are never cached.** A 5xx is precisely what a client is entitled to retry; pinning it for 24h would be worse than the duplicate.
+- `RedisIdempotencyStore::LEASE_TTL` has callers outside the store: `S3Bootloader` derives the S3 timeout as half of it so a photo upload can't outlive its own lease. Changing the TTL means checking those, not just the store.
+
 ---
 
 ## Configuration
@@ -417,6 +427,7 @@ Rules:
 - Run: `composer phpunit` (parallel). Single file: `./vendor/bin/phpunit tests/Feature/Controller/Foo/FooTest.php`. `phpunit` takes **one** path argument — passing several silently runs only the first.
 - PHPUnit is 9.6: data providers use the `@dataProvider` docblock and non-static provider methods, not `#[DataProvider]`.
 - **Per-test env var overrides**: `Spiral\Testing\TestCase` supports `#[\Spiral\Testing\Attribute\Env('KEY', 'value')]` (repeatable) on an individual test method — it's folded into the env array the app boots with for that test, layered on top of `public const ENV` on the class. Use this when different test methods in the same class each need a different env combination (e.g. one env var set, one unset, both empty) rather than one static per-class `ENV` constant or manually re-calling `$this->initApp([...])` mid-test. Passing `value: null` reproduces "unset" deterministically (Spiral's `Environment::get()` uses `isset()`, which is `false` for `null`), which is safer than relying on the ambient shell having no such var.
+- **A test asserting on an *unset* env var fails locally when your `.env` sets it.** Tests boot with the repo `.env` loaded, so a locally-configured `GATEWAY_SECRET` or `ACCESS_TOKEN_PUBLIC_KEY` flips the "not configured" branch and the test fails on your machine while passing in CI. Confirm with `GATEWAY_SECRET='' ./vendor/bin/phpunit tests/Feature/.../FooTest.php` before calling it a regression — and fix it at the source with `#[Env('GATEWAY_SECRET', null)]` on the method rather than leaving it ambient-dependent.
 - **Adding a controller? Delete the stale tokenizer cache first.** The list of discovered controller classes is memoized in `runtime/cache/<hash>.php` (find it with `grep -l 'App\\\\Controller' runtime/cache/*.php`). Until it is removed, a newly added controller's routes 404 in tests with `Unable to route ...` while every pre-existing route keeps working. Production images build with a cold runtime, so this only bites locally.
 
 ---
