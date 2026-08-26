@@ -242,7 +242,7 @@ re-enable a disabled linter or add per-line `//nolint` without a comment justify
 | ANY | `/ready` | `ReadyHandler` (checks PHP API healthcheck) |
 | GET | `/csrf` | `csrf.RotateTokenHandler` (requires auth) |
 | POST | `/api/auth/login`, `/login/passkey`, `/register`, `/provider/google` | `AuthSetHandler` (captcha → forward → cookies) |
-| POST | `/api/auth/login/passkey/init` | `CaptchaVerifyHandler` |
+| GET | `/api/auth/login/passkey/init` | `CaptchaVerifyHandler` (GET, matching the backend route and the client) |
 | POST | `/api/auth/logout` | `AuthResetHandler` |
 | ANY | `/api/{path:*}` | `FullForwardedHandler` (catch-all proxy) |
 
