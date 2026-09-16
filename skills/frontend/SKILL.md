@@ -143,12 +143,43 @@ Non-negotiables:
 | Charts | chart.js `^4` + vue-chartjs `^5` |
 | WebAuthn | `@simplewebauthn/browser` `^13` |
 | Drag/drop | vuedraggable `^4` |
-| Tests | Vitest `^3` (defer v4) + `@vue/test-utils`; Playwright for E2E |
+| Tests | Vitest `^4` (bumped 2026-09 for CVE-2026-84373 — no test/config changes needed, but see "npm Install & Lockfile Gotchas" below for the install recipe) + `@vue/test-utils`; Playwright for E2E |
 | Lang | TypeScript `~5.9`, vue-tsc `^2` (defer v3) |
 
 Before upgrading anything, check `npm outdated` and respect the "defer" notes above — several
 majors carry breaking changes the project intentionally postpones. Verify a version exists with
 `npm show <pkg> version` before installing.
+
+## npm Install & Lockfile Gotchas (hard-won, PR #171)
+
+- **npm 10.9.8/10.9.9 crashes on a full `npm install`** when a bumped package's optional-peer
+  set changes shape (hit on `vitest` 3→4, which adds ~10 new optional peers):
+  `TypeError: Cannot read properties of null (reading 'edgesOut')` in `#loadPeerSet`
+  (Arborist's `build-ideal-tree.js`). Upstream bug
+  [npm/cli#9787](https://github.com/npm/cli/issues/9787), unfixed in any 10.x release, fixed
+  in npm 11.6.0+. If you hit this exact error, it's the bug, not a real peer conflict.
+- **A scoped install, `--package-lock-only`, or `--force` can silently no-op ("up to date")**
+  once `node_modules` on disk already satisfies `package.json` — even right after deleting
+  `package-lock.json`. Arborist builds its "actual tree" from `node_modules`, not a fresh
+  registry resolve, so the regenerated lockfile ends up **missing other-platform
+  `optionalDependencies`** (e.g. Linux `@rollup/rollup-linux-x64-gnu`, `@oxlint/linux-x64-gnu`
+  when working from a macOS checkout). Local `npm ci`/tests/lint all pass — it only breaks on
+  CI's Linux runner with `Cannot find module '@rollup/rollup-linux-x64-gnu'` or similar.
+  `npm ci --dry-run` does NOT catch this either (it only checks internal lockfile consistency).
+- **Working recipe for a vitest-4-class major bump:**
+  1. Delete `node_modules` entirely (not just the lockfile) — the only way to force a genuine
+     full resolve. If the sandbox denies `rm -rf node_modules`, ask the user to run it.
+  2. `npx -y npm@11 install` (full tree, not scoped) — npm 11 doesn't have the Arborist bug.
+  3. **Verify with stock npm, not npm 11.** CI's `actions/setup-node` bundles npm 10.x with
+     Node 20, and npm 11 resolves *unrelated* transitive packages differently, which fails
+     `npm ci`'s strict consistency check on CI. Run plain `npm ci` locally — that's the exact
+     command CI runs.
+  4. Diff the new `package-lock.json` against `origin/master`'s for every package **outside**
+     the bump — any drift means npm 11 diverged from npm 10 and needs reconciling.
+- **`@vitest/coverage-v8` 4.x counts far fewer "coverable" lines than 3.x** on this codebase
+  (Codecov's tracked lines dropped 8449 → 3659, same 108 files, after the 3→4 bump). Expect a
+  `codecov/project` swing on a vitest major bump — it's a counting-methodology change, not an
+  actual coverage regression, and it isn't a required check on `master`.
 
 ---
 
