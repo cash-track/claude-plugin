@@ -143,12 +143,31 @@ Non-negotiables:
 | Charts | chart.js `^4` + vue-chartjs `^5` |
 | WebAuthn | `@simplewebauthn/browser` `^13` |
 | Drag/drop | vuedraggable `^4` |
-| Tests | Vitest `^3` (defer v4) + `@vue/test-utils`; Playwright for E2E |
+| Tests | Vitest `^4` + `@vue/test-utils`; Playwright for E2E |
 | Lang | TypeScript `~5.9`, vue-tsc `^2` (defer v3) |
 
 Before upgrading anything, check `npm outdated` and respect the "defer" notes above — several
 majors carry breaking changes the project intentionally postpones. Verify a version exists with
 `npm show <pkg> version` before installing.
+
+## Upgrading npm Packages Without Breaking `npm ci` in CI
+
+CI runs `npm ci`, which strictly requires `package-lock.json` to match `package.json` and to
+list every platform's optional native binaries — not just the ones installed locally. Follow
+this to keep an upgrade from passing locally and failing in CI:
+
+1. Delete `node_modules` before reinstalling, then run a full, unscoped `npm install` (not
+   `npm install <pkg>` for just the changed package). Installing over an existing
+   `node_modules`, or scoping the install to specific packages, can skip full dependency
+   resolution and produce a lockfile missing entries other platforms need.
+2. If `npm install` errors out during dependency resolution, retry with the latest npm
+   (`npx -y npm@latest install`) — some npm versions have resolver bugs on certain dependency
+   graphs. If that's needed, diff the resulting `package-lock.json` against the target
+   branch's for any package version change outside the upgrade you intended, and reconcile
+   any drift before pushing.
+3. Verify with a real `npm ci` (not `npm install`, not `--dry-run`) using the same npm
+   version CI uses — check the Node version in the CI workflow and match its bundled npm.
+   This is the only reliable proof the lockfile will work in CI.
 
 ---
 

@@ -203,9 +203,34 @@ Source of findings: **<Dependabot | `security.yml` run #<id> | `<audit tool>`>**
 | Ecosystem | Audit (fallback) | Remediate | Tests (run if code changed) |
 |---|---|---|---|
 | **PHP / Composer** (`api`, `mysql-backup`) | `composer audit --locked --format=json` | direct: raise constraint in `composer.json` then `composer update <pkg> -W`; transitive: `composer update <pkg> -W`. CI uses Symfony security-checker. | `api`: `composer checks` (or at least `composer phpunit`) — needs the test stack per the api README/`tests/docker-compose.yml`. `mysql-backup`: re-run `composer audit`, `make build`, and any `composer` test script if defined |
-| **npm** (`frontend`, `website`) | `npm audit --json` | direct: `npm install <pkg>@<ver>`; transitive: add `overrides` in `package.json` then `npm install`. Avoid `npm audit fix --force`. | frontend: `npm run test:unit -- --run` + `npm run lint`; website: `npm run lint:js` + `npm run build` |
+| **npm** (`frontend`, `website`) | `npm audit --json` | direct: `npm install <pkg>@<ver>`; transitive: add `overrides` in `package.json` then `npm install`. Avoid `npm audit fix --force`. See [keeping `npm ci` passing](#keeping-npm-ci-passing-in-ci) below before regenerating the lockfile. | frontend: `npm run test:unit -- --run` + `npm run lint`; website: `npm run lint:js` + `npm run build` |
 | **Go modules** (`gateway`) | `command -v govulncheck \|\| go install golang.org/x/vuln/cmd/govulncheck@latest`; then `govulncheck ./...` (reachability-aware) | `go get <module>@<patched>` then `go mod tidy` | `make test` |
 | **Actions/Docker/Terraform** (`infra`, `.github`, `mysql`, `redis`) | none — rely on Dependabot (Phase 2) for action SHAs, base images, providers | bump pinned action SHAs / `FROM` base tags / TF provider versions / Ansible collections as the alert dictates | infra: `ansible-lint` + `ansible-playbook site.yml --syntax-check` (see the `cash-track:infra` skill, `## Local Ansible and lint conventions` section, for the env it needs); Docker repos: `make build` |
+
+## Keeping `npm ci` passing in CI
+
+CI runs `npm ci`, which strictly requires `package-lock.json` to match `package.json` and to
+list every platform's optional native binaries, not just the ones installed locally. A
+regenerated lockfile that passes local tests can still fail CI. To avoid that:
+
+1. Delete `node_modules` before reinstalling, then run a full, unscoped `npm install`.
+   Installing over an existing `node_modules`, or scoping the install to just the bumped
+   package, can skip full dependency resolution and produce a lockfile missing entries other
+   platforms need — this passes locally and only fails on CI's runner.
+2. If `npm install` errors during dependency resolution, retry with the latest npm
+   (`npx -y npm@latest install`) — some npm versions have resolver bugs on certain dependency
+   graphs. If that's needed, diff the resulting `package-lock.json` against the target
+   branch's for any package version change outside the intended upgrade, and reconcile any
+   drift before pushing — a different npm version can resolve unrelated transitive packages
+   differently.
+3. Verify with a real `npm ci` (not `npm install`, not `--dry-run`) using the same npm
+   version CI uses. `npm ci --dry-run` only checks internal lockfile consistency — it will
+   NOT catch a lockfile that's missing another platform's optional dependencies.
+
+If open Dependabot PRs already exist for the same advisories and are failing CI on a stale
+lockfile relative to the default branch, it's fine to replace them with one consolidated PR —
+reference the closed PR numbers in the new PR body, then close the stale ones rather than
+rebasing each individually.
 
 ## Final checklist
 
