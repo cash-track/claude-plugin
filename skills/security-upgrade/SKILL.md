@@ -203,41 +203,29 @@ Source of findings: **<Dependabot | `security.yml` run #<id> | `<audit tool>`>**
 | Ecosystem | Audit (fallback) | Remediate | Tests (run if code changed) |
 |---|---|---|---|
 | **PHP / Composer** (`api`, `mysql-backup`) | `composer audit --locked --format=json` | direct: raise constraint in `composer.json` then `composer update <pkg> -W`; transitive: `composer update <pkg> -W`. CI uses Symfony security-checker. | `api`: `composer checks` (or at least `composer phpunit`) — needs the test stack per the api README/`tests/docker-compose.yml`. `mysql-backup`: re-run `composer audit`, `make build`, and any `composer` test script if defined |
-| **npm** (`frontend`, `website`) | `npm audit --json` | direct: `npm install <pkg>@<ver>`; transitive: add `overrides` in `package.json` then `npm install`. Avoid `npm audit fix --force`. A major bump can trip a real npm 10 resolver bug — see [npm resolver gotchas](#npm-resolver-gotchas-frontend-website) below before assuming it's a real conflict. | frontend: `npm run test:unit -- --run` + `npm run lint`; website: `npm run lint:js` + `npm run build` |
+| **npm** (`frontend`, `website`) | `npm audit --json` | direct: `npm install <pkg>@<ver>`; transitive: add `overrides` in `package.json` then `npm install`. Avoid `npm audit fix --force`. See [keeping `npm ci` passing](#keeping-npm-ci-passing-in-ci) below before regenerating the lockfile. | frontend: `npm run test:unit -- --run` + `npm run lint`; website: `npm run lint:js` + `npm run build` |
 | **Go modules** (`gateway`) | `command -v govulncheck \|\| go install golang.org/x/vuln/cmd/govulncheck@latest`; then `govulncheck ./...` (reachability-aware) | `go get <module>@<patched>` then `go mod tidy` | `make test` |
 | **Actions/Docker/Terraform** (`infra`, `.github`, `mysql`, `redis`) | none — rely on Dependabot (Phase 2) for action SHAs, base images, providers | bump pinned action SHAs / `FROM` base tags / TF provider versions / Ansible collections as the alert dictates | infra: `ansible-lint` + `ansible-playbook site.yml --syntax-check` (see the `cash-track:infra` skill, `## Local Ansible and lint conventions` section, for the env it needs); Docker repos: `make build` |
 
-## npm resolver gotchas (frontend, website)
+## Keeping `npm ci` passing in CI
 
-Hit on `frontend`'s `vitest` 3→4 CVE bump (PR #171); worth checking first on any npm major
-bump that behaves oddly.
+CI runs `npm ci`, which strictly requires `package-lock.json` to match `package.json` and to
+list every platform's optional native binaries, not just the ones installed locally. A
+regenerated lockfile that passes local tests can still fail CI. To avoid that:
 
-- **npm 10.9.8/10.9.9 has an Arborist crash** on a full `npm install` when the bumped
-  package's optional-peer set changes shape: `TypeError: Cannot read properties of null
-  (reading 'edgesOut')` in `#loadPeerSet` (`build-ideal-tree.js`). This is
-  [npm/cli#9787](https://github.com/npm/cli/issues/9787), unfixed in any 10.x release, fixed
-  in npm 11.6.0+. Confirm it's this bug (not a real conflict) from the error signature before
-  escalating or asking the user.
-- **Don't just switch to `npx -y npm@11 install` and call it done.** npm 11 resolves
-  unrelated transitive packages differently than the npm 10.x `actions/setup-node` bundles
-  with Node 20, which fails `npm ci`'s strict consistency check on CI for packages you never
-  touched. After any npm-11-assisted regeneration: run plain `npm ci` locally (the literal
-  command CI runs, not `npm@11 ci`) to verify, and diff `package-lock.json` against
-  `origin/<default>`'s for every package outside the bump list — any drift needs reconciling
-  before pushing.
-- **A scoped install (`npm install pkg@x pkg2@y`), `--package-lock-only`, or `--force` can
-  silently produce a lockfile missing other-platform `optionalDependencies`** (e.g. Linux
-  `@rollup/rollup-linux-x64-gnu`, `@oxlint/linux-x64-gnu` when working from a macOS
-  checkout), because npm skips a full registry resolve once `node_modules` on disk already
-  satisfies `package.json`. `npm ci --dry-run` passing locally does NOT catch this — it only
-  checks internal lockfile consistency. If CI fails with `Cannot find module
-  '@rollup/rollup-linux-x64-gnu'` (or similar) despite a clean local `npm ci`, delete
-  `node_modules` entirely and reinstall to force a genuine full resolve.
-- **A `vitest`/`@vitest/coverage-v8` major bump can swing the Codecov `codecov/project` check
-  hard** (observed -11pp on `frontend`) purely from `coverage-v8` counting fewer lines as
-  "coverable" — not a real regression. Check whether it's a required status check
-  (`gh api repos/<repo>/branches/<default>/protection`) before treating it as a blocker; if
-  not required, note it in the PR and don't chase it inside the CVE fix.
+1. Delete `node_modules` before reinstalling, then run a full, unscoped `npm install`.
+   Installing over an existing `node_modules`, or scoping the install to just the bumped
+   package, can skip full dependency resolution and produce a lockfile missing entries other
+   platforms need — this passes locally and only fails on CI's runner.
+2. If `npm install` errors during dependency resolution, retry with the latest npm
+   (`npx -y npm@latest install`) — some npm versions have resolver bugs on certain dependency
+   graphs. If that's needed, diff the resulting `package-lock.json` against the target
+   branch's for any package version change outside the intended upgrade, and reconcile any
+   drift before pushing — a different npm version can resolve unrelated transitive packages
+   differently.
+3. Verify with a real `npm ci` (not `npm install`, not `--dry-run`) using the same npm
+   version CI uses. `npm ci --dry-run` only checks internal lockfile consistency — it will
+   NOT catch a lockfile that's missing another platform's optional dependencies.
 
 If open Dependabot PRs already exist for the same advisories and are failing CI on a stale
 lockfile relative to the default branch, it's fine to replace them with one consolidated PR —
