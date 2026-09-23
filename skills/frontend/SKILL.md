@@ -152,22 +152,43 @@ majors carry breaking changes the project intentionally postpones. Verify a vers
 
 ## Upgrading npm Packages Without Breaking `npm ci` in CI
 
-CI runs `npm ci`, which strictly requires `package-lock.json` to match `package.json` and to
-list every platform's optional native binaries — not just the ones installed locally. Follow
-this to keep an upgrade from passing locally and failing in CI:
+`npm ci` strictly requires `package-lock.json` to match `package.json` and to list every
+platform's optional native binaries — not just the ones installed locally. It runs in two
+places: the `quality` workflow and the release `Dockerfile`.
 
-1. Delete `node_modules` before reinstalling, then run a full, unscoped `npm install` (not
+**The Node/npm version is deliberately NOT pinned — everything floats on the current LTS.**
+The `Dockerfile` builds on `node:lts-alpine`, `quality.yml` passes `node-version: 'lts/*'`, and
+local dev uses `nvm alias default lts/*`. The reference npm is **the one inside
+`node:lts-alpine`** — that is what the release runs; everything else must match its major.
+History: CI once ran Node 20 / npm 10 while the image had moved to Node 24 / npm 11, so a
+lockfile that passed every PR check failed `npm ci` only in the release build (v2.1.5 — npm 11
+rejected a global `nanoid` override conflicting with a nested one). Lockfile commits flip-
+flopping between npm majors (`libc` fields stripped / restored) are the same drift.
+
+1. **Check your npm major before touching the lockfile:** `npm -v` must match
+   `docker run --rm node:lts-alpine npm -v` (same major; minors produce identical lockfiles).
+   If not, `nvm install --lts && nvm alias default lts/*` first. Never write the lockfile with
+   an older npm, and **never with `npx npm@latest`** — latest can be a major *ahead* of LTS.
+2. Delete `node_modules` before reinstalling, then run a full, unscoped `npm install` (not
    `npm install <pkg>` for just the changed package). Installing over an existing
    `node_modules`, or scoping the install to specific packages, can skip full dependency
    resolution and produce a lockfile missing entries other platforms need.
-2. If `npm install` errors out during dependency resolution, retry with the latest npm
-   (`npx -y npm@latest install`) — some npm versions have resolver bugs on certain dependency
-   graphs. If that's needed, diff the resulting `package-lock.json` against the target
-   branch's for any package version change outside the upgrade you intended, and reconcile
-   any drift before pushing.
-3. Verify with a real `npm ci` (not `npm install`, not `--dry-run`) using the same npm
-   version CI uses — check the Node version in the CI workflow and match its bundled npm.
-   This is the only reliable proof the lockfile will work in CI.
+   (`npm install --package-lock-only` is a quick way to see what the LTS npm would write.)
+3. **Read the lockfile diff for npm-version noise.** A diff that only removes `libc` fields or
+   bundled `inBundle` entries means it was written by an older npm — discard it. A diff that
+   only *adds* them is the current npm's form catching up — keep it.
+4. **Verify the way the release does:** `docker build .` (or
+   `docker run --rm -v "$PWD":/src:ro node:lts-alpine sh -c 'cp -r /src /app && cd /app && npm ci --ignore-scripts'`).
+   A local `npm ci` only proves your own npm accepts the lockfile.
+5. **Override hygiene.** Every entry in `package.json#overrides` is a security pin that goes
+   stale: once upstream's own range already requires the patched version (e.g. postcss now
+   declares `nanoid ^3.3.18`), delete the override. Never combine a global override with a
+   conflicting nested one for the same package (`"nanoid": "^3"` + `"@vue/devtools-core":
+   { "nanoid": "^5" }`) — npm 10 tolerates it, npm 11 fails `npm ci`.
+6. **Expect breakage every October**, when a new Node line becomes Active LTS and the `lts`
+   tags move (Node 26 in Oct 2026). A red `quality` run with an `npm ci` / `EUSAGE` error and no
+   dependency change in the PR means the floating LTS moved — fix the lockfile/overrides under
+   the new npm, don't pin Node.
 
 ---
 
