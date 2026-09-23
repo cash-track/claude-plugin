@@ -217,15 +217,23 @@ regenerated lockfile that passes local tests can still fail CI. To avoid that:
    Installing over an existing `node_modules`, or scoping the install to just the bumped
    package, can skip full dependency resolution and produce a lockfile missing entries other
    platforms need — this passes locally and only fails on CI's runner.
-2. If `npm install` errors during dependency resolution, retry with the latest npm
-   (`npx -y npm@latest install`) — some npm versions have resolver bugs on certain dependency
-   graphs. If that's needed, diff the resulting `package-lock.json` against the target
-   branch's for any package version change outside the intended upgrade, and reconcile any
-   drift before pushing — a different npm version can resolve unrelated transitive packages
-   differently.
-3. Verify with a real `npm ci` (not `npm install`, not `--dry-run`) using the same npm
-   version CI uses. `npm ci --dry-run` only checks internal lockfile consistency — it will
-   NOT catch a lockfile that's missing another platform's optional dependencies.
+2. Write the lockfile with the **LTS npm** — Node/npm float on LTS everywhere (the frontend's
+   `Dockerfile` uses `node:lts-alpine`, `quality` uses `lts/*`). Check `npm -v` against
+   `docker run --rm node:lts-alpine npm -v` (same major) and `nvm install --lts` if behind.
+   Do **not** fall back to `npx npm@latest` — latest can be a major ahead of LTS and writes a
+   lockfile the release image may reject. If the LTS npm hits a resolver bug, diff the
+   lockfile against the target branch for version changes outside the intended upgrade and
+   reconcile before pushing.
+3. Verify with a real `npm ci` in the release image: `docker build .`, or
+   `docker run --rm -v "$PWD":/src:ro node:lts-alpine sh -c 'cp -r /src /app && cd /app && npm ci --ignore-scripts'`.
+   A local `npm ci` only proves your npm accepts the lockfile; `npm ci --dry-run` only checks
+   internal consistency and will NOT catch another platform's missing optional dependencies.
+4. **Keep `overrides` minimal and prune them.** Before adding one, check whether the parent's
+   own range already allows the patched version (then just regenerate the lockfile). While
+   there, delete any existing override whose upstream range now already requires the patched
+   version. Never add a global override that conflicts with a nested one for the same
+   package — npm 11 fails `npm ci` on it (frontend v2.1.5 release: global `nanoid ^3` vs
+   `@vue/devtools-core` → `nanoid ^5`).
 
 If open Dependabot PRs already exist for the same advisories and are failing CI on a stale
 lockfile relative to the default branch, it's fine to replace them with one consolidated PR —

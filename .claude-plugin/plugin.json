@@ -1,7 +1,7 @@
 {
   "name": "cash-track",
   "description": "Cash-Track engineering standards, architecture, and workflows for the api, frontend, gateway, and infra components",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "author": {
     "name": "Cash-Track",
     "email": "vovikems@gmail.com"
