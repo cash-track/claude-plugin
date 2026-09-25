@@ -311,15 +311,20 @@ Inject `Psr\Log\LoggerInterface` via constructor. Usage:
 
 ```php
 $this->logger->error('Unable to store tag', [
-    'tag_id'  => $tag->id,
-    'user_id' => $this->getUser()->id,
-    'error'   => $e->getMessage(),
+    'tag_id'    => $tag->id,
+    'user_id'   => $this->user->id,
+    'exception' => $e,
 ]);
 ```
 
-- Use `->error()` for unexpected failures. Use `->warning()` for expected-but-notable conditions (e.g. entity not found when it should exist). Use `->info()` sparingly for audit trails.
-- Always include context array with IDs and the exception message/class.
-- Never log sensitive data (passwords, tokens, encryption keys, raw email content).
+- Levels: `error` = unexpected, needs a human (reaches Sentry). `warning` = expected but notable (degraded Redis failing open, retries, bad third-party input). `info` = rare lifecycle/audit. `debug` = everything else. Client outcomes (4xx, validation, auth, not found) are never `error`.
+- Pass the Throwable as `'exception' => $e`, never `'msg' => $e->getMessage()`. `ExceptionContextProcessor` adds a readable `error` string for Loki (RR's JSON encoder renders a Throwable as `{}`).
+- Sentry: `ExceptionToSentryIssueHandler` (level `error`) sits on the default channel (`MONOLOG_DEFAULT_CHANNEL`) and only acts when `context['exception']` is a Throwable. `error` without an exception = Loki only; `warning` with an exception = Loki only. Do not also call `report()` for the same exception.
+- `BeforeSend` dedupes per Throwable instance (WeakMap), so log + reporter + sync-queue rethrow produce one event. `ignore_exceptions` and `before_send` still apply.
+- Uncaught exceptions: `ExceptionLogReporter` (replaces Spiral's `LoggerReporter`) logs `error`, or `debug` for classes in `SentryConfig::getIgnoreExceptions()`. `ForwardServerErrorsHandler` adds a `warning` with the request path.
+- IDs only (`user_id`, `wallet_id`, ...). Never log tokens, cookies, passwords, emails, request bodies, `print_r` of entities/payloads, or decrypted values. Client IPs must not reach Sentry.
+- Repeating infra failures (outage retried on a timer): log `error` with the exception only on the healthy→down transition, later retries at `warning` without `exception` (Loki only), recovery once at `info`. See `ReconnectingRedis`. Group them into one Sentry issue with a dedicated exception type fingerprinted in `BeforeSend` (`RedisUnavailableException` → `['redis-unavailable']`), not by matching generic exception classes.
+- Tests run with `SENTRY_DSN=''` (set in `tests/TestCase.php`); to assert capture, swap `HubInterface` via `removeBinding` + `bindSingleton` (it is a singleton, `mock()` throws).
 - Log channels: `default` (app errors), `roadrunner` (prod), `db` (query log, debug only).
 
 ---
@@ -332,6 +337,7 @@ $this->logger->error('Unable to store tag', [
 - All other uncaught exceptions → HTTP 500 JSON `{"status": 500, "error": "message"}` + file snapshot in `runtime/snapshots/`.
 - For expected domain errors (not found, conflict), return an explicit response rather than throwing a generic exception.
 - When catching in a controller, log then return an error response — don't re-throw.
+- Never catch-all a client error and an infra failure together. Services throw `App\Exception\ClientErrorException` (translated, safe message) or a domain type (e.g. `Passkey\Exception\InvalidClientResponseException`) for client causes; the controller catches that → 4xx with no error log, then `\Throwable` → `error` log with `'exception' => $e` → 500. Feature-test both branches (`expectErrorLog(null)` / `expectErrorLog('message')` from `Tests\Traits\InteractsWithMock`). Document the 500 via `#/components/responses/InternalError`.
 
 **Adding a mapped exception:** create it in `app/src/Exception/`, then add it to `ViewRenderer::MAP`. The map is consulted **only when errors are suppressed** (`EnvSuppressErrors`, i.e. `DEBUG=false`). With `DEBUG=true` the `ErrorHandlerMiddleware` renders the raw exception under the unmapped code (500), so a mapped 401/403 shows up as a 500 locally. Tests run with `DEBUG=false`, so they see the mapped code.
 
