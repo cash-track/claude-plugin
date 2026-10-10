@@ -8,6 +8,6 @@
   },
   "homepage": "https://github.com/cash-track/claude-plugin",
   "repository": "https://github.com/cash-track/claude-plugin",
-  "license": "MIT",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "keywords": ["cash-track", "spiral", "roadrunner", "vue", "nuxt-ui", "golang", "ansible"]
 }
