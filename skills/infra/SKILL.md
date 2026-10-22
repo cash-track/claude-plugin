@@ -291,7 +291,7 @@ curl -X POST http://ct-prod-prometheus/-/reload
 | `ServiceContainerDown` | Container not seen by cAdvisor >2m | critical | `docker-all ps`, check logs |
 | `ServiceContainerRestarting` | Container restarted >2× in 30m | warning | `docker-all logs --tail=100 <svc>` |
 | `HTTPServiceHighServerErrorRate` | 5xx rate >20% for 5m | critical | Traefik logs, then service logs |
-| `HTTPServiceHighResponseLatency` | p90 >1s for 2m | warning | API/gateway logs, DB query latency |
+| `HTTPServiceHighResponseLatency` | p90 of non-4xx >1s for 2m | warning | API/gateway logs, DB query latency; website-only → scanner burst (see Common Failure Patterns) |
 | `MySQLExporterDown` | `up{job="mysql-exporter"} == 0` for 5m | critical | `docker-core ps mysql mysql-exporter` |
 | `TraefikDown` | Traefik metrics endpoint down for 5m | critical | `docker-core logs traefik` |
 | `HostMemoryPressure` | PSI >10% for 2m | warning | `docker stats`, check for OOM kills |
@@ -609,6 +609,49 @@ human-operator path documented in this README never had that `sudo`.
 "$@"`. `ops` already has passwordless `ALL=(ALL) NOPASSWD:ALL` sudo, so
 this makes the documented command work unmodified. Apply with `make -C
 infra deploy` (role is `compose-up`, tagged `compose`).
+
+### `HTTPServiceHighResponseLatency` flapping on `website@docker` (scanner bursts)
+
+Symptom: the website latency alert fires repeatedly for 1–2 minutes at a time, about
+every 7 minutes, while api, gateway and frontend stay at about 90ms p90. The host is idle,
+with no restarts or OOM kills.
+
+```bash
+P=http://ct-prod-prometheus
+# Which service, and when (pending/firing history):
+curl -s -G "$P/api/v1/query_range" --data-urlencode 'query=ALERTS{alertname="HTTPServiceHighResponseLatency"}' \
+  --data-urlencode start=$(date -u -v-24H +%s) --data-urlencode end=$(date -u +%s) --data-urlencode step=15
+# Spikes line up with 404 bursts (baseline ~0, burst 250–320 per 5m):
+#   sum by (code)(increase(traefik_service_requests_total{service="website@docker"}[5m]))
+# Paths and edge IPs in a burst (the Traefik access log is plain text, not JSON; $1 = CF edge IP, $7 = path, $9 = status):
+./infra/ssh-prod 'docker logs cashtrack-traefik-1 --since <start> --until <end> 2>&1' \
+  | grep '"website@docker"' | awk '$9==404{print $1, $7, $NF}'
+```
+
+**Root cause (2026-10-22):** a secrets and attack-surface scanner probed paths such as
+`/.env*`, `*.key`, `/.svn/entries`, `/_nuxt/*.js.map` and `/dashboard/admin`. The Nuxt
+website server-renders every 404 page, so a few hundred concurrent probes queued up and
+took 1–5s each. Normal traffic is about 0.03 req/s per service, mostly health checks, so the
+slow 404s dominated p90. Nothing leaked: every probe got a 404.
+
+**Fix applied:**
+- The alert now ignores client errors: `code!~"4.."` was added to the histogram selector
+  (cash-track/infra#91). 5xx still counts. Backtested over 7 days, it fired once instead of
+  7 times. The remaining firing was real: normal pages were slow during that burst.
+- A Cloudflare WAF custom rule on the cash-track.app zone blocks known probe paths:
+  `.env`, `.git`, `.svn`, `.hg`, `.aws`, `.ssh`, `.DS_Store`, and the `.key`, `.pem`, `.sql`,
+  `.bak` and `.map` file types. `/.well-known/` stays allowed. Probes that guess routes
+  (`/dashboard`, `/credentials.json`, `/.claude`, …) still reach the website and get a 404.
+  That is accepted for now. Widen the rule or add a per-IP 404 rate limit if they start
+  causing slowness again.
+
+Verify the WAF rule from outside: `curl -s -o /dev/null -w '%{http_code}' https://cash-track.app/.env`
+should return `403`, with `server: cloudflare`, and the request must not appear in the Traefik
+log. The real client IP is not in the Traefik log; find it in Cloudflare Security → Events.
+
+A single slow first request after a deploy (cold website SSR, about 1.5s) can briefly put the
+alert into pending. At this traffic level, one slow request is enough. The 2m `for` keeps it
+from firing.
 
 ---
 
