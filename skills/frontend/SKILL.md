@@ -671,8 +671,8 @@ Four shared composables in `src/composables/`, each `useXxx()` returning refs + 
   both projects), `npm run test:e2e -- --project=chromium`, or a single file/case
   (`-g "SS-08" e2e/settings-security.spec.ts`) — **the last is the right default for a simple fix**;
   see the tier table under "Before commit". The smoke script is
-  bare `playwright test --grep @smoke` with **no `--workers=1`**, so a local run uses default
-  parallelism (~half the cores); the subset includes shared-account mutators (`WC-03`, `WE-02/05`,
+  bare `playwright test --grep @smoke` with **no `--workers=1`**, so a local run uses the
+  configured 2 workers; the subset includes shared-account mutators (`WC-03`, `WE-02/05`,
   `WA-07`, `TG-05`, `LM-02/03/04`, `SH-06`), so pass `npm run test:e2e:smoke -- --workers=1` when you
   want the serial, shared-account-safe execution the full suite uses.
 - **Settings is `UTabs`, not nested routes.** `/settings` is the only real URL (Profile is the
@@ -760,12 +760,16 @@ Four shared composables in `src/composables/`, each `useXxx()` returning refs + 
   pages that never loaded).
 - **`--project=setup` exits 1** ("no tests found") — `global-setup.ts` has no `test()` calls; it's a
   config-level `globalSetup`, not a runnable project. Run `--project=chromium` / `--project=mobile-chrome`.
-- **Run headed (non-CI).** `headless: isCI`, and you can't set `CI=1` to force headless (it flips
-  `baseURL` to `localhost:4173` and spawns `npm run preview`). The full suite (both projects,
-  `--workers=1`) takes ~6 min headed; use `--workers=1` to avoid shared-account data races.
+- **Runs are headless everywhere** (`headless: true`) so local runs don't open browser windows.
+  Watch a run with `--headed`, `--ui` or `--debug`. The HTML reporter is `open: 'never'` — view it
+  with `npx playwright show-report`. Local default is **2 workers** (CI: 1); don't go above 3
+  (`--workers=3`) — more parallel load on the shared dev account brings back the timeout/race
+  flakes below. Use `--workers=1` to avoid shared-account data races. Don't set `CI=1` to change
+  run behaviour (it flips `baseURL` to `localhost:4173` and spawns `npm run preview`). The full
+  suite (both projects, `--workers=1`) took ~6 min when it ran headed.
 - **Heavy multi-navigation tests need `test.slow()` under full-suite parallel load.** A test doing
   3+ full `page.goto`s (each re-firing the profile + section data loads) plus heading/title
-  assertions can pass solo in ~6–24s yet blow the default 30s timeout once the full suite runs its 5
+  assertions can pass solo in ~6–24s yet blow the default 30s timeout once the full suite runs its
   workers in parallel (hit on IT-05 and TD-12). Add `test.slow()` (triples the budget to 90s) rather
   than thinning coverage. Expect whack-a-mole: raising one heavy test's budget redistributes worker
   load and can tip the *next*-most-borderline test over — fix the genuinely heavy ones, then re-run
