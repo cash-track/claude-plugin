@@ -1,0 +1,19 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # Opens/updates the release PR; merging it tags cash-track--vX.Y.Z and publishes the release.
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          # PAT/App token so the release PR triggers the required `validate` check; GITHUB_TOKEN does not.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}

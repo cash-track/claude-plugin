@@ -21,7 +21,7 @@ get and keep current without manual copying.
 | Repo | `cash-track/claude-plugin`, public, in the existing org |
 | Granularity | One repo, one plugin, marketplace manifest at the repo root |
 | Scope | Full consolidation: skills, agents, commands, hook, and the root `CLAUDE.md` |
-| Release model | Track `main` via `source: "./"`, gated by CI and branch protection |
+| Release model | Semver releases via release-please (superseded 2026-11-06, see "Releases") |
 | Precondition | Every hardcoded machine-specific path is fixed before the first publish |
 
 Rejected alternatives:
@@ -327,3 +327,13 @@ Rollback at any point: `mv .claude-backup/skills-2026-08-04 .claude/skills` and
 - A clean machine can reach a working setup using only the README.
 - No file under `skills/`, `agents/`, or `commands/` contains a path specific to one machine.
 - `cash-track-dependabot-alerts` resolves as a bare command in a Bash tool call after install.
+
+## Releases
+
+Updated 2026-11-06. The original "track `main`" model never held: `plugin.json` pins `version`, and
+Claude Code keeps users on the manifest version until it changes, so every release needed a manual
+`chore(plugin): bump version` commit. release-please now derives the bump from conventional commits,
+opens a release PR that bumps `plugin.json` and `CHANGELOG.md`, and on merge tags
+`cash-track--vX.Y.Z` (the format plugin dependency constraints resolve) and publishes a GitHub
+release. A PR is used instead of a direct push because `main` is protected. The repo `CLAUDE.md`
+holds the commit and release rules.
