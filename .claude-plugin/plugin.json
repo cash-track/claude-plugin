@@ -1,7 +1,7 @@
 {
   "name": "cash-track",
   "description": "Cash-Track engineering standards, architecture, and workflows for the api, frontend, gateway, and infra components",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "author": {
     "name": "Cash-Track",
     "email": "vovikems@gmail.com"
@@ -9,5 +9,13 @@
   "homepage": "https://github.com/cash-track/claude-plugin",
   "repository": "https://github.com/cash-track/claude-plugin",
   "license": "PolyForm-Noncommercial-1.0.0",
-  "keywords": ["cash-track", "spiral", "roadrunner", "vue", "nuxt-ui", "golang", "ansible"]
+  "keywords": [
+    "cash-track",
+    "spiral",
+    "roadrunner",
+    "vue",
+    "nuxt-ui",
+    "golang",
+    "ansible"
+  ]
 }
