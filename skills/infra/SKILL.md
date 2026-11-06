@@ -24,6 +24,17 @@ Operational runbook and service-specific commands: `./infra/README.md`
 
 Follow these steps in order for any incident. Don't skip straight to mitigation — evidence collected upfront prevents misdiagnosis and repeated incidents.
 
+### 0. Search Past Incidents
+
+Past incidents are stored as GitHub issues in `cash-track/infra` with the label `incident`, not in this skill. Before diagnosing, search them for the alert name, service, or symptom. A match often has the diagnosis commands and the fix ready to use.
+
+```bash
+gh issue list --repo cash-track/infra --label incident --state all --search "<AlertName or service or symptom>"
+gh issue view <number> --repo cash-track/infra
+```
+
+Search several terms if the first one misses: the alert name (`HTTPServiceHighClientErrorRate`), the Traefik service (`gateway@docker`), and the symptom (`401`, `unhealthy`, `404 page not found`). A closed match whose symptom is back means either the fix regressed or the root cause is different. Confirm which one before you reuse the old fix.
+
 ### 1. Collect Evidence
 
 Before touching anything, snapshot the current state. This prevents you from destroying the evidence you need.
@@ -106,7 +117,7 @@ Once service is restored, determine why it happened. Without this step, the same
 Look for changes in the relevant time window:
 - **Deploy/config change?** — Check `gh run list` and Telegram deploy notifications
 - **Resource exhaustion?** — Grafana: memory/CPU/disk trend leading up to the event; `dmesg` for OOM kills
-- **Cron job conflict?** — Ofelia log in Loki: `{container="ofelia"}` — did a backup, purge, or maintenance job overlap with peak traffic?
+- **Cron job conflict?** — Ofelia log in Loki: `{service="ofelia"}` — did a backup, purge, or maintenance job overlap with peak traffic?
 - **External dependency?** — Cloudflare status, DigitalOcean status, 1Password availability (for deploys)
 - **Gradual drift?** — Block Volume approaching capacity, Prometheus retention cap not holding, Redis maxmemory eviction storm
 
@@ -155,16 +166,15 @@ What was done to restore service.
 - [ ] <e.g., raise mem_limit for api, open PR in cash-track/api>
 ```
 
-Post the report as a GitHub issue in `cash-track/infra` with label `incident` so it's searchable. This also serves as the audit trail if the same pattern recurs.
+Post the report as a GitHub issue in `cash-track/infra` with label `incident`. Step 0 depends on these issues being searchable, so:
+- **Title:** `RCA: <AlertName> on <service> (<root cause in a few words>)`. Put the alert name and the Traefik service in the title, because those are what the next responder will search for.
+- **Body:** include the exact diagnosis commands and their tell-tale output, in addition to the RCA sections above. That turns the issue into a reusable playbook.
+- **Recurrence:** if step 0 found the same root cause, comment on that issue with the new dates and evidence, and reopen it if the fix failed. Don't open a duplicate.
+- **Close** the issue once the follow-ups are done or tracked elsewhere. Step 0 searches all states.
 
-### 7. Capture the Case in This Skill
+### 7. Update This Skill Only With Reusable Knowledge
 
-After every non-trivial incident, update the "Common Failure Patterns" section of this skill with:
-- The symptom that presented
-- The root cause found
-- The exact commands that diagnosed it
-
-This converts institutional knowledge into a repeatable playbook. Use the `cash-track:infra` skill itself or edit this file directly. For broader design decisions or architectural changes discovered during the incident, update `./infra/docs/design.md` as well.
+Don't add incident write-ups to this skill. They belong in the issue. Edit this file only when the incident taught something that applies beyond the incident itself: a new or changed alert, a service or wrapper missing from the tables, a diagnosis command that's wrong, or a logging gotcha. For design decisions or architectural changes, update `./infra/docs/design.md`.
 
 ---
 
@@ -213,7 +223,8 @@ Important! Never run this without user confirmation.
 | traefik, mysql, redis, ofelia | `docker-core` | `compose.core.yml` |
 | api, gateway, frontend, website, mysql-backup, mysql-exporter | `docker-app` | `compose.app.yml` |
 | prometheus, loki, tempo, grafana, alertmanager, promtail, node-exporter, cadvisor, otel-collector | `docker-obs` | `compose.obs.yml` |
-| crashers-bot, home-exporter, mysql-backup-crashers | `docker-telegram` | `compose.telegram.yml` |
+| crashers-bot, home-exporter, mysql-backup-crashers, recipes-bot | `docker-telegram` | `compose.telegram.yml` |
+| potwora, potwora-backup (WordPress, potwora.com.ua) | `docker-potwora` (core + potwora) | `compose.potwora.yml` |
 
 All wrappers accept standard `docker compose` args. Run them remotely via `./infra/ssh-prod <wrapper> <args>`.
 
@@ -291,7 +302,16 @@ curl -X POST http://ct-prod-prometheus/-/reload
 | `ServiceContainerDown` | Container not seen by cAdvisor >2m | critical | `docker-all ps`, check logs |
 | `ServiceContainerRestarting` | Container restarted >2× in 30m | warning | `docker-all logs --tail=100 <svc>` |
 | `HTTPServiceHighServerErrorRate` | 5xx rate >20% for 5m | critical | Traefik logs, then service logs |
-| `HTTPServiceHighResponseLatency` | p90 of non-4xx >1s for 2m | warning | API/gateway logs, DB query latency; website-only → scanner burst (see Common Failure Patterns) |
+| `HTTPServiceHighClientErrorRate` | 4xx other than 404 >80% of requests for 5m | info | Group by code first; at low traffic, one client can dominate. Get the client IP from the gateway log (see Loki) |
+| `HTTPServiceHighResponseLatency` | p90 of non-4xx >1s for 2m | warning | API/gateway logs, DB query latency; website only → check incident issues for scanner bursts |
+| `GatewayUpstreamErrorRateHigh` | >20% of gateway→API calls failing for 10m | warning | `docker-app logs api`, then gateway logs |
+| `GatewayUpstreamLatencyHigh` | gateway→API p95 >1s for 10m | warning | API latency dashboard, DB query latency |
+| `GatewayTokenRefreshFailing` | refresh rejections >0.1/s for 15m | warning | Gateway logs, API auth logs |
+| `AppLoginFailureRateHigh` | >70% of logins failing for 15m | warning | API auth logs; credential stuffing vs. a broken login path |
+| `AppUserGaugeMissing` | `app_users` absent while API is up for 30m | warning | API metrics endpoint `api:2112` |
+| `PrometheusTargetMissing` | `up == 0` for 15m | warning | Prometheus → Status → Targets |
+| `HostDataVolumeElevated` | `/mnt/data` >80% full for 5m | warning | `du -sh /mnt/data/*` before it hits 90% |
+| `RecipesBotJobFailures` | any failed recipes-bot job in 1h | warning | `docker-telegram logs recipes-bot` |
 | `MySQLExporterDown` | `up{job="mysql-exporter"} == 0` for 5m | critical | `docker-core ps mysql mysql-exporter` |
 | `TraefikDown` | Traefik metrics endpoint down for 5m | critical | `docker-core logs traefik` |
 | `HostMemoryPressure` | PSI >10% for 2m | warning | `docker stats`, check for OOM kills |
@@ -323,19 +343,22 @@ Access: Grafana → Explore → Loki datasource. All container stdout is shipped
 
 ```logql
 # All logs from a container:
-{container="api"}
+{service="api"}
 
 # Errors only:
-{container="api"} |= "error" | logfmt
+{service="api"} |= "error" | logfmt
 
 # Ofelia scheduled job results:
-{container="ofelia"}
+{service="ofelia"}
 
 # MySQL backup execution:
-{container="mysql-backup"}
+{service="mysql-backup"}
 
-# Traefik access log (all 5xx):
-{container="traefik"} |= "\"status\":5"
+# Traefik access log (all 5xx). The log is plain text, not JSON: `"GET /path HTTP/2.0" 502 ...`
+{service="traefik"} |~ `HTTP/[0-9.]+" 5[0-9]{2} `
+
+# Gateway (JSON). The real client IP is only here: Traefik and Loki's traefik stream have the Cloudflare edge IP.
+{service="gateway"} | json | status = 401
 
 # All containers, last 15 minutes of errors:
 {container=~".+"} |= "error" | logfmt | level = "error"
@@ -460,6 +483,12 @@ cd infra/terraform && terraform init -backend-config=backend.hcl
 ./infra/ssh-prod docker-core logs --tail=100 traefik
 ```
 
+A plain-text `404 page not found` is Traefik's response when no router has a healthy upstream. It doesn't come from the app. Check whether the container is `(unhealthy)`, because Traefik drops unhealthy containers from routing:
+```bash
+./infra/ssh-prod docker-all ps | grep -i unhealthy
+./infra/ssh-prod 'docker inspect <container> --format "{{json .State.Health}}"'
+```
+
 ### MySQL won't start / healthcheck failing
 
 ```bash
@@ -530,128 +559,13 @@ sudo systemctl status tailscaled
 
 ```bash
 ./infra/ssh-prod docker-all logs ofelia
-# Loki query in Grafana: {container="ofelia"}
+# Loki query in Grafana: {service="ofelia"}
 # Prometheus metric: ofelia_job_failures_total
 ```
 
-### Potwora (WordPress) container `unhealthy` + `potwora.com.ua` returns "404 page not found"
+### Anything not covered above
 
-The `potwora` / `potwora-backup` services live in `compose.potwora.yml`; use the
-`docker-potwora` wrapper (core + potwora), e.g. `./infra/ssh-prod docker-potwora ps`.
-The compose file defines **no** healthcheck — `unhealthy` comes from the
-`serversideup/php:8.1-fpm-apache` image's built-in check (`curl localhost:8080`).
-
-A plain-text "404 page not found" is **Traefik's** default response (no live
-upstream), not a WordPress/Apache 404 — so the container, not WordPress, is the
-problem.
-
-```bash
-./infra/ssh-prod docker-potwora ps                         # look for "(unhealthy)"
-./infra/ssh-prod docker-potwora logs --tail=80 potwora     # the smoking gun ↓
-# potwora-1 | mktemp: failed to create directory via template
-#            '/var/run/apache2/socks.XXXXXXXXXX': Permission denied
-./infra/ssh-prod 'docker exec cashtrack-potwora-1 sh -c "id; ls -ld /var/run/apache2"'
-# id => www-data (uid 33);  dir => drwxr-xr-x root root   ← the mismatch
-./infra/ssh-prod 'docker inspect cashtrack-potwora-1 --format "{{json .State.Health}}"'
-# FailingStreak high, Output: "Failed to connect to localhost port 8080"
-```
-
-**Root cause:** `compose.potwora.yml` mounts a `tmpfs` over `/var/run/apache2`
-(added in `ad77f54` to clear a stale `apache2.pid`). The tmpfs comes up
-`root:root 0755`, but Apache runs as **www-data (uid 33)** and can't create its
-FastCGI socket dir → Apache never binds 8080 → healthcheck fails → Traefik 404.
-Deterministic on every container recreate; a plain `restart` does NOT fix it
-(re-mounts root-owned).
-
-**Immediate mitigation** (no redeploy — the Apache run-script retry-loops, so it
-binds within seconds of the dir becoming writable):
-```bash
-./infra/ssh-prod 'docker exec -u 0 cashtrack-potwora-1 chmod 0777 /var/run/apache2'
-# verify: container goes healthy, https://potwora.com.ua => 200
-```
-
-**Permanent fix** (already applied): tmpfs in long form with `mode: 0777` in
-`compose/compose.potwora.yml`, then `make -C infra deploy` (or
-`gh workflow run ansible-apply.yml --repo cash-track/infra -f tags=compose`).
-If it ever recurs after a deploy, confirm the rendered mode survived:
-`docker compose ... config | grep -A4 tmpfs` should show `mode: 511` (octal 0777).
-
-### `./ssh-prod deploy-service <service> <tag>` fails ("command not found" or `Permission denied`)
-
-Symptom: the documented operator command from this README fails for
-**every** service, old and new — either `bash: deploy-service: command not
-found`, or (if invoked by full path) `mv: inter-device move failed: ...
-unable to remove target: Permission denied`.
-
-```bash
-./infra/ssh-prod 'echo $PATH'                              # /opt/cashtrack/bin is absent
-./infra/ssh-prod '/opt/cashtrack/bin/deploy-service <svc> <tag>'  # reproduces the mv/Permission denied
-./infra/ssh-prod 'ls -ld /mnt/data'                         # drwxr-xr-x root:root  <- the mismatch
-```
-
-**Root cause:** `deploy-service` is installed to `/opt/cashtrack/bin`
-(`ansible/roles/compose-up/tasks/main.yml`), which is not on `ops`'s `$PATH`
-(only `/usr/local/bin` is, via the `docker-*` wrappers from the `base`
-role) — so the bare command from the README/runbook 404s. Even invoked by
-full path, the script must run as **root**: it atomically rewrites
-`/mnt/data/cashtrack.env` via `mv` from a `/tmp` tempfile, and cross-device
-`mv` unlinks the destination first — which requires *write on the parent
-directory* (`/mnt/data`, `root:root 0755`), not ownership of the file
-itself. `ops` owns `cashtrack.env` but not `/mnt/data`, so the unlink is
-denied. The `deploy` CI user works fine because `deploy.yml` (in
-`cash-track/.github`) already invokes it via `sudo -n` against the sudoers
-grant in `terraform/modules/droplet/templates/cloud-init.yaml`; the
-human-operator path documented in this README never had that `sudo`.
-
-**Fix applied:** a thin PATH wrapper at `/usr/local/bin/deploy-service`
-(`ansible/roles/compose-up/files/deploy-service-wrapper`, installed by the
-`compose-up` role) that `exec sudo -n /opt/cashtrack/bin/deploy-service
-"$@"`. `ops` already has passwordless `ALL=(ALL) NOPASSWD:ALL` sudo, so
-this makes the documented command work unmodified. Apply with `make -C
-infra deploy` (role is `compose-up`, tagged `compose`).
-
-### `HTTPServiceHighResponseLatency` flapping on `website@docker` (scanner bursts)
-
-Symptom: the website latency alert fires repeatedly for 1–2 minutes at a time, about
-every 7 minutes, while api, gateway and frontend stay at about 90ms p90. The host is idle,
-with no restarts or OOM kills.
-
-```bash
-P=http://ct-prod-prometheus
-# Which service, and when (pending/firing history):
-curl -s -G "$P/api/v1/query_range" --data-urlencode 'query=ALERTS{alertname="HTTPServiceHighResponseLatency"}' \
-  --data-urlencode start=$(date -u -v-24H +%s) --data-urlencode end=$(date -u +%s) --data-urlencode step=15
-# Spikes line up with 404 bursts (baseline ~0, burst 250–320 per 5m):
-#   sum by (code)(increase(traefik_service_requests_total{service="website@docker"}[5m]))
-# Paths and edge IPs in a burst (the Traefik access log is plain text, not JSON; $1 = CF edge IP, $7 = path, $9 = status):
-./infra/ssh-prod 'docker logs cashtrack-traefik-1 --since <start> --until <end> 2>&1' \
-  | grep '"website@docker"' | awk '$9==404{print $1, $7, $NF}'
-```
-
-**Root cause (2026-10-22):** a secrets and attack-surface scanner probed paths such as
-`/.env*`, `*.key`, `/.svn/entries`, `/_nuxt/*.js.map` and `/dashboard/admin`. The Nuxt
-website server-renders every 404 page, so a few hundred concurrent probes queued up and
-took 1–5s each. Normal traffic is about 0.03 req/s per service, mostly health checks, so the
-slow 404s dominated p90. Nothing leaked: every probe got a 404.
-
-**Fix applied:**
-- The alert now ignores client errors: `code!~"4.."` was added to the histogram selector
-  (cash-track/infra#91). 5xx still counts. Backtested over 7 days, it fired once instead of
-  7 times. The remaining firing was real: normal pages were slow during that burst.
-- A Cloudflare WAF custom rule on the cash-track.app zone blocks known probe paths:
-  `.env`, `.git`, `.svn`, `.hg`, `.aws`, `.ssh`, `.DS_Store`, and the `.key`, `.pem`, `.sql`,
-  `.bak` and `.map` file types. `/.well-known/` stays allowed. Probes that guess routes
-  (`/dashboard`, `/credentials.json`, `/.claude`, …) still reach the website and get a 404.
-  That is accepted for now. Widen the rule or add a per-IP 404 rate limit if they start
-  causing slowness again.
-
-Verify the WAF rule from outside: `curl -s -o /dev/null -w '%{http_code}' https://cash-track.app/.env`
-should return `403`, with `server: cloudflare`, and the request must not appear in the Traefik
-log. The real client IP is not in the Traefik log; find it in Cloudflare Security → Events.
-
-A single slow first request after a deploy (cold website SSR, about 1.5s) can briefly put the
-alert into pending. At this traffic level, one slow request is enough. The 2m `for` keeps it
-from firing.
+Incident-specific failures are kept as `incident` issues in `cash-track/infra`, not in this skill. Search them as described in step 0 of the Investigation Workflow.
 
 ---
 
